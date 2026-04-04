@@ -269,58 +269,59 @@ function exportCV(isPremium) {
 }
 
 async function payWithStars() {
-    closeModal('payment-modal');
-    showToast("جاري التحقق وتجهيز الفاتورة... ⏳");
+    const btn = document.querySelector('#payment-modal .btn-primary');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'جاري التجهيز... ⏳';
+    btn.style.opacity = '0.7';
+    btn.disabled = true;
 
     try {
-        const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                title: 'سيرة ذاتية احترافية خالية من الحقوق',
-                description: 'دفع 15 نجمة لإزالة العلامة المائية ودعم التطبيق 🚀',
-                payload: 'premium_cv_' + Date.now(),
-                currency: 'XTR',
-                prices: [{ label: 'السعر', amount: 15 }]
-            })
-        });
+        const prices = encodeURIComponent(JSON.stringify([{ label: 'السعر', amount: 15 }]));
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink?title=${encodeURIComponent('سيرة ذاتية احترافية بدون حقوق')}&description=${encodeURIComponent('دعم 15 نجمة')}&payload=premium_${Date.now()}&currency=XTR&prices=${prices}`;
 
+        const res = await fetch(url);
         const json = await res.json();
 
         if (json.ok && json.result) {
-            // Provide a manual fallback link in the UI in case openInvoice silently hangs
+            closeModal('payment-modal');
             const statusBox = document.getElementById('export-status');
             statusBox.style.display = "block";
             statusBox.innerHTML = `
                 <p style="color:var(--primary-color); font-weight:bold; margin-bottom:10px;">تم تجهيز الفاتورة بنجاح ✅</p>
-                <a href="${json.result}" target="_blank" class="btn btn-primary" style="display:block; text-decoration:none; margin-bottom:10px;">انقر هنا للدفع (إذا لم تفتح الشاشة تلقائياً) ⭐️</a>
+                <a href="${json.result}" target="_blank" class="btn btn-primary" style="display:block; text-decoration:none; margin-bottom:10px;">انقر هنا للدفع (إذا لم تفتح الشاشة) ⭐️</a>
                 <p style="font-size:12px; margin-bottom:10px; color:var(--hint-color);">بعد إتمام الدفع بنجاح، اضغط على الزر بالأسفل:</p>
                 <button class="btn btn-secondary" onclick="generateAndSendPDF(true)">📥 تصدير السيرة الاحترافية الآن</button>
             `;
 
             try {
-                tg.openInvoice(json.result, function (status) {
-                    if (status === 'paid') {
-                        showToast("⭐️ شكراً لثقتك! نجحت العملية. جاري تصدير سيرتك الاحترافية...");
-                        statusBox.innerHTML = "<p>✅ تم الدفع بنجاح، جاري التحميل...</p>";
-                        generateAndSendPDF(true);
-                    } else if (status === 'cancelled') {
-                        showToast("❌ تم إلغاء عملية الدفع.");
-                    } else {
-                        showToast("⚠️ تعذر إتمام الدفع أو حدثت مشكلة.");
-                    }
-                });
+                if (tg.openInvoice) {
+                    tg.openInvoice(json.result, function (status) {
+                        if (status === 'paid') {
+                            showToast("⭐️ شكراً لثقتك! نجحت العملية. جاري تصدير سيرتك الاحترافية...");
+                            statusBox.innerHTML = "<p style='color:green;font-weight:bold;'>✅ تم الدفع بنجاح، جاري التحميل...</p>";
+                            generateAndSendPDF(true);
+                        } else if (status === 'cancelled') {
+                            showToast("❌ تم إلغاء عملية الدفع.");
+                        } else {
+                            showToast("⚠️ تعذر إتمام الدفع أو حدثت مشكلة.");
+                        }
+                    });
+                } else {
+                    tg.openTelegramLink(json.result);
+                }
             } catch (openErr) {
-                // Fallback for desktop versions where openInvoice throws Error
                 tg.openTelegramLink(json.result);
-                showToast("تم فتح الفاتورة، يرجى إتمام الدفع أو المحاولة عبر الهاتف");
             }
         } else {
-            throw new Error("لم يتمكن البوت من توليد رابط الفاتورة.");
+            throw new Error(json.description || "فشل توليد الفاتورة.");
         }
     } catch (err) {
+        alert("عذراً، لم نتمكن من الاتصال بسيرفر تليجرام بسبب إعدادات الشبكة. الكود: " + err.message);
         console.error(err);
-        showToast("⚠️ حدث خطأ فني أثناء تحضير الفاتورة.");
+    } finally {
+        btn.innerHTML = originalText;
+        btn.style.opacity = '1';
+        btn.disabled = false;
     }
 }
 
