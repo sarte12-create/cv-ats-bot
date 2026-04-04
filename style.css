@@ -49,24 +49,34 @@ input:focus, textarea:focus { border-color: var(--primary-color); }
 .toast { background: #333; color: white; padding: 10px 20px; border-radius: 20px; margin-top: 10px; font-size: 13px; animation: fadeInOut 3s; }
 @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(20px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-20px); } }
 
-/* PDF Settings - STRICTLY A4 210mm x 297mm */
+/* PDF Settings - ATS Classic Minimalist Template */
 #pdf-wrapper { position: absolute; top: -9999px; left: -9999px; width: 210mm; background: white; z-index: -100; }
-#pdf-container { width: 210mm; min-height: 297mm; background-color: #ffffff; color: #000000; padding: 12mm 15mm; font-family: "Tajawal", "Inter", sans-serif; box-sizing: border-box; font-size: 11px; line-height: 1.4; position: relative; text-align: left; }
+#pdf-container { width: 210mm; min-height: 297mm; background-color: #ffffff; color: #000000; padding: 15mm 20mm; font-family: "Georgia", "Times New Roman", "Tajawal", serif; box-sizing: border-box; font-size: 11px; line-height: 1.5; position: relative; text-align: left; }
 [dir="rtl"] #pdf-container { text-align: right; }
-.pdf-header { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
-.pdf-name { font-size: 24px; font-weight: 700; margin-bottom: 5px; color: #111; }
-.pdf-jobtitle { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 8px;}
-.pdf-contact { font-size: 10px; color: #333; display: flex; gap: 10px; flex-wrap: wrap;}
-.pdf-contact div { display: inline-block; margin-inline-end: 10px; }
-.pdf-section { margin-bottom: 15px; }
-.pdf-section-title { font-size: 13px; font-weight: 700; color: #111; text-transform: uppercase; border-bottom: 1px solid #ccc; padding-bottom: 3px; margin-bottom: 8px; }
-.pdf-item { margin-bottom: 8px; }
-.pdf-item-header { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 2px;}
-.pdf-item-sub { font-size: 10px; font-style: italic; color: #555; margin-bottom: 4px;}
-.pdf-skills-list { display: flex; flex-wrap: wrap; gap: 5px; }
-.pdf-skill-badge { background-color: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; color: #222; }
-.pdf-desc { font-size: 10px; color: #222; }
-.pdf-desc p { margin-bottom: 3px; }
-.pdf-desc ul { margin-top: 3px; }
-.pdf-desc li { margin-bottom: 2px; margin-inline-start: 15px; }
-.pdf-watermark { position: absolute; bottom: 8mm; left: 0; right: 0; text-align: center; font-size: 9px; color: #999; }
+.pdf-header { text-align: center; margin-bottom: 12px; }
+.pdf-name { font-size: 26px; font-weight: 700; margin-bottom: 2px; color: #000; text-transform: capitalize; }
+.pdf-jobtitle { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 4px;}
+.pdf-contact { font-size: 10px; color: #111; }
+.pdf-contact span { display: inline-block; margin: 0 4px; }
+.pdf-section { margin-bottom: 12px; }
+.pdf-section-title { font-size: 12px; font-weight: 700; color: #000; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 6px; }
+.pdf-item { margin-bottom: 10px; }
+.pdf-item-header { display: flex; justify-content: space-between; font-weight: 700; color: #000; margin-bottom: 1px; font-size: 11px;}
+.pdf-item-sub { display: flex; justify-content: space-between; font-size: 11px; font-style: italic; color: #333; margin-bottom: 4px;}
+.pdf-skills-list { display: block; font-size: 11px; color: #000; }
+.pdf-desc { font-size: 11px; color: #000; }
+.pdf-desc p { margin-bottom: 2px; }
+.pdf-desc ul { margin-top: 2px; list-style-type: disc; margin-inline-start: 15px;}
+.pdf-desc li { margin-bottom: 2px; padding-left: 2px;}
+.pdf-watermark { position: absolute; bottom: 8mm; left: 0; right: 0; text-align: center; font-size: 9px; color: #ccc; }
+
+/* TPL2 (Modern Sidebar Lines) */
+#pdf-container.tpl2 .pdf-section-title { border-bottom: none; border-left: 3px solid #000; padding-left: 6px; }
+[dir="rtl"] #pdf-container.tpl2 .pdf-section-title { border-left: none; border-right: 3px solid #000; padding-right: 6px; padding-left: 0; }
+#pdf-container.tpl2 .pdf-header { text-align: left; }
+[dir="rtl"] #pdf-container.tpl2 .pdf-header { text-align: right; }
+
+/* TPL3 (Minimalist - dotted underline) */
+#pdf-container.tpl3 .pdf-section-title { border-bottom: 1px dotted #000; text-align: center; }
+#pdf-container.tpl3 .pdf-header { text-align: left; margin-bottom: 15px; border-bottom: 1px dotted #444; padding-bottom: 10px; }
+[dir="rtl"] #pdf-container.tpl3 .pdf-header { text-align: right; }

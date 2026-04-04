@@ -13,8 +13,8 @@ tg.onEvent('themeChanged', () => {
 });
 
 let currentStep = 1;
-const totalSteps = 9;
-let freeAITokens = 3;
+const totalSteps = 10;
+let freeAITokens = 9999; // Unlimited for now based on user request
 
 const translations = {
     ar: {
@@ -96,7 +96,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function saveData() {
     const getVal = (id) => document.getElementById(id).value;
     const data = {
-        lang: document.querySelector('input[name="language"]:checked').value,
+        lang: document.querySelector('input[name="language"]:checked')?.value || 'ar',
+        cvType: document.querySelector('input[name="cvType"]:checked')?.value || 'fresh',
+        cvTemplate: document.querySelector('input[name="cvTemplate"]:checked')?.value || 'tpl1',
         personal: {
             fullName: getVal('fullName'), email: getVal('email'),
             phone: getVal('phone'), location: getVal('location'),
@@ -131,6 +133,8 @@ function loadData() {
     try {
         const data = JSON.parse(raw);
         if (data.lang) document.querySelector(`input[name="language"][value="${data.lang}"]`).checked = true;
+        if (data.cvType) document.querySelector(`input[name="cvType"][value="${data.cvType}"]`).checked = true;
+        if (data.cvTemplate) document.querySelector(`input[name="cvTemplate"][value="${data.cvTemplate}"]`).checked = true;
         document.getElementById('fullName').value = data.personal?.fullName || '';
         document.getElementById('email').value = data.personal?.email || '';
         document.getElementById('phone').value = data.personal?.phone || '';
@@ -189,13 +193,14 @@ document.getElementById('confirm-ai-btn').onclick = async () => {
 
     const d = saveData();
     const langMode = d.lang === 'en' ? 'English' : 'Arabic';
+    const xpContext = d.cvType === 'fresh' ? 'fresh graduate/entry-level' : 'experienced professional';
     let prompt = "";
 
     showToast("جاري الاستعانة بالذكاء الاصطناعي... ⏳");
 
     if (activeAI.action === 'summary') {
         if (!d.personal.jobTitle) return showToast('اكتب المسمى الوظيفي أولاً');
-        prompt = `Write a short CV summary for ${d.personal.jobTitle} with skills: ${d.skills}. In ${langMode}. Max 3 lines. No quotes or markdown.`;
+        prompt = `Write a short CV summary for a ${xpContext} ${d.personal.jobTitle} with skills: ${d.skills}. In ${langMode}. Max 3 lines. No quotes or markdown.`;
     } else if (activeAI.action === 'skills') {
         if (!d.personal.jobTitle) return showToast('اكتب المسمى الوظيفي أولاً');
         prompt = `Generate 10 skills for ${d.personal.jobTitle}. In ${langMode}. Comma separated ONLY.`;
@@ -224,7 +229,8 @@ document.getElementById('confirm-ai-btn').onclick = async () => {
         }
         showToast("✨ تمت المهمة بنجاح!");
     } catch (e) {
-        showToast("⚠️ حدث خطأ في الشبكة أو المفتاح");
+        console.error("AI Error => ", e);
+        showToast("⚠️ حدث خطأ، تأكد من صحة المفتاح واتصالك بالإنترنت");
     }
 };
 
@@ -247,15 +253,16 @@ function preparePDFPreview() {
     const dict = translations[mainLang];
 
     document.getElementById('pdf-wrapper').setAttribute('dir', mainLang === 'en' ? 'ltr' : 'rtl');
+    document.getElementById('pdf-container').className = d.cvTemplate || 'tpl1';
 
     let html = `
         <div class="pdf-header">
             <div class="pdf-name" dir="auto">${d.personal.fullName}</div>
             <div class="pdf-jobtitle" dir="auto">${d.personal.jobTitle}</div>
             <div class="pdf-contact" dir="auto">
-                ${d.personal.email ? `<div>📧 ${d.personal.email}</div>` : ''}
-                ${d.personal.phone ? `<div>📱 ${d.personal.phone}</div>` : ''}
-                ${d.personal.location ? `<div>📍 ${d.personal.location}</div>` : ''}
+                ${d.personal.email ? `<span>${d.personal.email}</span>` : ''}
+                ${d.personal.phone ? `${d.personal.email ? '<span>|</span>' : ''}<span>${d.personal.phone}</span>` : ''}
+                ${d.personal.location ? `${d.personal.email || d.personal.phone ? '<span>|</span>' : ''}<span>${d.personal.location}</span>` : ''}
             </div>
         </div>
     `;
@@ -269,8 +276,8 @@ function preparePDFPreview() {
         html += `<div class="pdf-section"><div class="pdf-section-title">${dict.experience}</div>`;
         d.experiences.forEach(e => {
             html += `<div class="pdf-item">
-                <div class="pdf-item-header"><span dir="auto">${e.title} - ${e.company}</span>
-                <span dir="auto">${e.start} - ${e.end || dict.present}</span></div>
+                <div class="pdf-item-header"><span dir="auto">${e.title}</span><span dir="auto">${e.start} - ${e.end || dict.present}</span></div>
+                <div class="pdf-item-sub"><span dir="auto">${e.company}</span><span></span></div>
                 <div class="pdf-desc">${parseBiDiList(e.desc)}</div>
             </div>`;
         });
@@ -281,26 +288,23 @@ function preparePDFPreview() {
         html += `<div class="pdf-section"><div class="pdf-section-title">${dict.education}</div>`;
         d.education.forEach(e => {
             html += `<div class="pdf-item">
-                <div class="pdf-item-header"><span dir="auto">${e.degree} - ${e.field}</span>
-                <span dir="auto">${e.year}</span></div>
-                <div class="pdf-item-sub" dir="auto">${e.inst}</div>
+                <div class="pdf-item-header"><span dir="auto">${e.inst}</span><span dir="auto">${e.year}</span></div>
+                <div class="pdf-item-sub"><span dir="auto">${e.degree} - ${e.field}</span><span></span></div>
             </div>`;
         });
         html += `</div>`;
     }
 
     if (d.skills) {
-        html += `<div class="pdf-section"><div class="pdf-section-title">${dict.skills}</div><div class="pdf-skills-list">`;
-        d.skills.split(',').filter(x => x.trim()).forEach(s => {
-            html += `<div class="pdf-skill-badge" dir="auto">${s.trim()}</div>`;
-        });
+        html += `<div class="pdf-section"><div class="pdf-section-title">${dict.skills}</div><div class="pdf-skills-list" dir="auto">`;
+        html += d.skills.split(',').filter(x => x.trim()).map(s => s.trim()).join(' &bull; ');
         html += `</div></div>`;
     }
 
     if (d.languages?.length) {
         html += `<div class="pdf-section"><div class="pdf-section-title">${dict.languages}</div>`;
         d.languages.forEach(l => {
-            html += `<div style="font-size: 10px; margin-bottom: 3px;" dir="auto"><strong>${l.name}:</strong> ${l.level}</div>`;
+            html += `<div style="font-size: 11px; margin-bottom: 4px;" dir="auto"><strong>${l.name}</strong> - ${l.level}</div>`;
         });
         html += `</div>`;
     }

@@ -31,8 +31,27 @@
         </div>
 
         <form id="cv-form">
-            <!-- Step 1 -->
+            <!-- Step 1: CV Type -->
             <div class="step active" id="step-1">
+                <h2>نوع السيرة الذاتية</h2>
+                <div class="radio-group">
+                    <label class="radio-card"><input type="radio" name="cvType" value="fresh" checked> <span>طالب / حديث تخرج 🎓</span></label>
+                    <label class="radio-card"><input type="radio" name="cvType" value="experienced"> <span>صاحب خبرة 💼</span></label>
+                </div>
+            </div>
+
+            <!-- Step 2: Template Selection -->
+            <div class="step" id="step-2">
+                <h2>شكل السيرة (قالب ATS)</h2>
+                <div class="radio-group">
+                    <label class="radio-card"><input type="radio" name="cvTemplate" value="tpl1" checked> <span>النموذج 1 (كلاسيكي رسمي) 📄</span></label>
+                    <label class="radio-card"><input type="radio" name="cvTemplate" value="tpl2"> <span>النموذج 2 (عصري بخطوط جانبية) 📑</span></label>
+                    <label class="radio-card"><input type="radio" name="cvTemplate" value="tpl3"> <span>النموذج 3 (بسيط ومدمج) 📋</span></label>
+                </div>
+            </div>
+
+            <!-- Step 3: Language -->
+            <div class="step" id="step-3">
                 <h2>لغة السيرة الذاتية</h2>
                 <div class="radio-group">
                     <label class="radio-card"><input type="radio" name="language" value="ar" checked> <span>عربي 🇸🇦</span></label>
@@ -41,8 +60,8 @@
                 </div>
             </div>
 
-            <!-- Step 2 -->
-            <div class="step" id="step-2">
+            <!-- Step 4: Personal -->
+            <div class="step" id="step-4">
                 <h2>البيانات الشخصية</h2>
                 <div class="form-group"><label>الاسم الكامل</label><input type="text" id="fullName" required></div>
                 <div class="form-group"><label>البريد الإلكتروني</label><input type="email" id="email" required></div>
@@ -50,8 +69,8 @@
                 <div class="form-group"><label>المدينة/الدولة</label><input type="text" id="location" required></div>
             </div>
 
-            <!-- Step 3 -->
-            <div class="step" id="step-3">
+            <!-- Step 5: Summary -->
+            <div class="step" id="step-5">
                 <h2>النبذة والمسمى</h2>
                 <div class="form-group"><label>المسمى الوظيفي</label><input type="text" id="jobTitle" required></div>
                 <div class="form-group ai-group">
@@ -60,9 +79,9 @@
                 </div>
             </div>
 
-            <!-- Step 4 -->
-            <div class="step" id="step-4">
-                <h2>الخبرات</h2>
+            <!-- Step 6: Experience -->
+            <div class="step" id="step-6">
+                <h2>الخبرات المهنية</h2>
                 <div id="experiences-list"></div>
                 <button type="button" class="btn btn-secondary" onclick="addExperience()">+ إضافة خبرة</button>
             </div>
@@ -83,9 +102,9 @@
                 </div>
             </template>
 
-            <!-- Step 5 -->
-            <div class="step" id="step-5">
-                <h2>التعليم</h2>
+            <!-- Step 7: Education -->
+            <div class="step" id="step-7">
+                <h2>التعليم والمؤهلات</h2>
                 <div id="education-list"></div>
                 <button type="button" class="btn btn-secondary" onclick="addEducation()">+ إضافة مؤهل</button>
             </div>
@@ -96,14 +115,14 @@
                     <div class="form-group"><label>التخصص</label><input type="text" class="edu-field"></div>
                     <div class="form-group row">
                         <div class="col"><label>المؤسسة</label><input type="text" class="edu-inst"></div>
-                        <div class="col"><label>الخريج</label><input type="text" class="edu-year"></div>
+                        <div class="col"><label>سنة التخرج</label><input type="text" class="edu-year"></div>
                     </div>
                     <button type="button" class="btn-remove" onclick="this.parentElement.remove()">X</button>
                 </div>
             </template>
 
-            <!-- Step 6 -->
-            <div class="step" id="step-6">
+            <!-- Step 8: Skills -->
+            <div class="step" id="step-8">
                 <h2>المهارات</h2>
                 <div class="form-group ai-group mt-3">
                     <button type="button" class="btn-ai" onclick="requestAI('skills')">✨ اقتراح مهارات</button>
@@ -111,8 +130,8 @@
                 </div>
             </div>
 
-            <!-- Step 7 -->
-            <div class="step" id="step-7">
+            <!-- Step 9: Languages -->
+            <div class="step" id="step-9">
                 <h2>اللغات</h2>
                 <div id="languages-list"></div>
                 <button type="button" class="btn btn-secondary" onclick="addLanguage()">+ إضافة لغة</button>
@@ -126,16 +145,13 @@
                 </div>
             </template>
 
-            <!-- Step 8 -->
-            <div class="step" id="step-8">
-                <h2>المعاينة</h2>
+            <!-- Step 10: Export -->
+            <div class="step" id="step-10">
+                <h2>المعاينة والتصدير</h2>
                 <p>النسخة الحالية مجانية وتتضمن علامة مائية صغيرة لدعم التطبيق.</p>
-            </div>
-
-            <!-- Step 9 -->
-            <div class="step" id="step-9">
-                <h2>إنشاء الـ PDF</h2>
-                <div id="export-status" class="status-box">الرجاء النقر أدناه كخطوة أخيرة...</div>
+                <div id="export-status" class="status-box" style="margin-top: 15px; text-align: center; font-weight: bold; color: var(--primary-color);">
+                    الرجاء النقر أدناه كخطوة أخيرة لتوليد الـ PDF 🚀
+                </div>
             </div>
         </form>
 
