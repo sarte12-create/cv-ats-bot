@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CV ATS Bot</title>
+    <!-- Telegram Web App -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Progress Bar -->
+        <div class="progress-bar-container"><div class="progress-bar" id="progress-bar"></div></div>
+        <div id="toast-container"></div>
+        
+        <!-- Stars Modal Mock -->
+        <div id="stars-modal" class="modal">
+            <div class="modal-content">
+                <i class="fa-solid fa-star star-icon"></i>
+                <h3>ميزة مدفوعة مؤقتاً مجانية ✨</h3>
+                <p>هذه الخدمة ستتطلب مستقبلاً <strong>10 نجوم تليجرام</strong>. لديك اليوم <span id="free-tokens">3</span> محاولات مجانية!</p>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" type="button" onclick="closeModal()">إلغاء</button>
+                    <button class="btn btn-primary" type="button" id="confirm-ai-btn">استمرار للتعزيز</button>
+                </div>
+            </div>
+        </div>
+
+        <form id="cv-form">
+            <!-- Step 1 -->
+            <div class="step active" id="step-1">
+                <h2>لغة السيرة الذاتية</h2>
+                <div class="radio-group">
+                    <label class="radio-card"><input type="radio" name="language" value="ar" checked> <span>عربي 🇸🇦</span></label>
+                    <label class="radio-card"><input type="radio" name="language" value="en"> <span>إنجليزي 🇺🇸</span></label>
+                    <label class="radio-card"><input type="radio" name="language" value="both"> <span>عربي وإنجليزي 🌍</span></label>
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="step" id="step-2">
+                <h2>البيانات الشخصية</h2>
+                <div class="form-group"><label>الاسم الكامل</label><input type="text" id="fullName" required></div>
+                <div class="form-group"><label>البريد الإلكتروني</label><input type="email" id="email" required></div>
+                <div class="form-group"><label>رقم الجوال</label><input type="tel" id="phone" required></div>
+                <div class="form-group"><label>المدينة/الدولة</label><input type="text" id="location" required></div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="step" id="step-3">
+                <h2>النبذة والمسمى</h2>
+                <div class="form-group"><label>المسمى الوظيفي</label><input type="text" id="jobTitle" required></div>
+                <div class="form-group ai-group">
+                    <button type="button" class="btn-ai" onclick="requestAI('summary')">✨ توليد نبذة بالذكاء الاصطناعي</button>
+                    <textarea id="summary" rows="4"></textarea>
+                </div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="step" id="step-4">
+                <h2>الخبرات</h2>
+                <div id="experiences-list"></div>
+                <button type="button" class="btn btn-secondary" onclick="addExperience()">+ إضافة خبرة</button>
+            </div>
+
+            <template id="tpl-experience">
+                <div class="dynamic-item">
+                    <div class="form-group"><label>المسمى</label><input type="text" class="exp-title"></div>
+                    <div class="form-group"><label>جهة العمل</label><input type="text" class="exp-company"></div>
+                    <div class="form-group row">
+                        <div class="col"><label>من</label><input type="text" class="exp-start"></div>
+                        <div class="col"><label>إلى</label><input type="text" class="exp-end"></div>
+                    </div>
+                    <div class="form-group ai-group">
+                        <button type="button" class="btn-ai" onclick="requestAI('enhance', this)">✨ تحسين كنقاط (ATS)</button>
+                        <textarea class="exp-desc" rows="4"></textarea>
+                    </div>
+                    <button type="button" class="btn-remove" onclick="this.parentElement.remove()">X</button>
+                </div>
+            </template>
+
+            <!-- Step 5 -->
+            <div class="step" id="step-5">
+                <h2>التعليم</h2>
+                <div id="education-list"></div>
+                <button type="button" class="btn btn-secondary" onclick="addEducation()">+ إضافة مؤهل</button>
+            </div>
+
+            <template id="tpl-education">
+                <div class="dynamic-item">
+                    <div class="form-group"><label>الدرجة العلمية</label><input type="text" class="edu-degree"></div>
+                    <div class="form-group"><label>التخصص</label><input type="text" class="edu-field"></div>
+                    <div class="form-group row">
+                        <div class="col"><label>المؤسسة</label><input type="text" class="edu-inst"></div>
+                        <div class="col"><label>الخريج</label><input type="text" class="edu-year"></div>
+                    </div>
+                    <button type="button" class="btn-remove" onclick="this.parentElement.remove()">X</button>
+                </div>
+            </template>
+
+            <!-- Step 6 -->
+            <div class="step" id="step-6">
+                <h2>المهارات</h2>
+                <div class="form-group ai-group mt-3">
+                    <button type="button" class="btn-ai" onclick="requestAI('skills')">✨ اقتراح مهارات</button>
+                    <textarea id="skills" rows="4" placeholder="قيادة، برمجة (مفصولة بفاصلة)"></textarea>
+                </div>
+            </div>
+
+            <!-- Step 7 -->
+            <div class="step" id="step-7">
+                <h2>اللغات</h2>
+                <div id="languages-list"></div>
+                <button type="button" class="btn btn-secondary" onclick="addLanguage()">+ إضافة لغة</button>
+            </div>
+
+            <template id="tpl-language">
+                <div class="dynamic-item row" style="align-items: center">
+                    <div class="col" style="flex:2"><input type="text" class="lang-name" placeholder="اللغة"></div>
+                    <div class="col" style="flex:1"><input type="text" class="lang-level" placeholder="المستوى"></div>
+                    <button type="button" class="btn-remove" style="position:static" onclick="this.closest('.dynamic-item').remove()">X</button>
+                </div>
+            </template>
+
+            <!-- Step 8 -->
+            <div class="step" id="step-8">
+                <h2>المعاينة</h2>
+                <p>النسخة الحالية مجانية وتتضمن علامة مائية صغيرة لدعم التطبيق.</p>
+            </div>
+
+            <!-- Step 9 -->
+            <div class="step" id="step-9">
+                <h2>إنشاء الـ PDF</h2>
+                <div id="export-status" class="status-box">الرجاء النقر أدناه كخطوة أخيرة...</div>
+            </div>
+        </form>
+
+        <div class="nav-buttons">
+            <button class="btn btn-secondary" type="button" id="btn-prev" onclick="nav(-1)" style="display:none;">السابق</button>
+            <button class="btn btn-primary" type="button" id="btn-next" onclick="nav(1)">التالي</button>
+        </div>
+    </div>
+
+    <!-- Hidden Output -->
+    <div id="pdf-wrapper">
+        <div id="pdf-container"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
