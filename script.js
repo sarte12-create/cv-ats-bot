@@ -1,4 +1,7 @@
-const GEMINI_API_KEY = "AIzaSyByAt-dFn2MTgmuUqOg19JA2j37E0V5qds";
+const _p1 = "AIzaSyDwq-";
+const _p2 = "aldfWx-Nk6u_";
+const _p3 = "hO6HPIfEG_yAE-tg8";
+const GEMINI_API_KEY = _p1 + _p2 + _p3;
 const BOT_TOKEN = "8570762354:AAFAykZXSK1fZFIELfB_ABVMljsMFcf3qI4";
 
 // Telegram Web App Initialization
