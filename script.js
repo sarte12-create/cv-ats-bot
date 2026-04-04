@@ -171,37 +171,53 @@ function loadData() {
     } catch (e) { }
 }
 
+let activeAI = { action: '', target: null };
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
-function openPrompt(action, el = null) {
+async function requestAI(action, el = null) {
+    activeAI = { action, target: el };
     const d = saveData();
-    const lang = d.lang === 'en' ? 'الإنجليزية' : 'العربية';
-    const xpContext = d.cvType === 'fresh' ? 'طالب حديث التخرج أو مبتدئ' : 'صاحب خبرة مهنية';
-    let p = "";
+    const langMode = d.lang === 'en' ? 'English' : 'Arabic';
+    const xpContext = d.cvType === 'fresh' ? 'fresh graduate/entry-level' : 'experienced professional';
+    let prompt = "";
 
     if (action === 'summary') {
-        const job = d.personal.jobTitle || 'موظف';
-        p = `اكتب نبذة تعريفية (Summary) لسيرة ذاتية احترافية تتوافق مع فحص الـ ATS.\nالمسمى الوظيفي: ${job} (${xpContext}).\nالمهارات المتوفرة: ${d.skills}.\nاللغة: ${lang}.\nالرجاء كتابتها في 3 أسطر وبأسلوب احترافي بحت، وبدون الرد علي بأي مقدمات.`;
-    } else if (action === 'enhance') {
-        const t = el.closest('.dynamic-item');
-        const txt = t.querySelector('.exp-desc').value || '[اضف مهامك هنا]';
-        const job = t.querySelector('.exp-title').value || 'موظف';
-        p = `حسن وصغ النص التالي ليكون عبارة عن إنجازات وتأثير احترافي يناسب فحص الـ ATS (بصيغة Bullet points).\nالمسمى: ${job}.\nالنص: ${txt}.\nاللغة: ${lang}.\nاكتب النقاط مباشرة تفصل بينها بأسطر جديدة، وبدون علامات النجمة (*) أو الشرطات (-)، بدون مقدمات.`;
+        if (!d.personal.jobTitle) return showToast('يرجى كتابة المسمى الوظيفي أولاً لنتمكن من توليد النبذة!');
+        const skillsText = d.skills ? `with skills: ${d.skills}` : '';
+        prompt = `Write a short CV summary for a ${xpContext} ${d.personal.jobTitle} ${skillsText}. In ${langMode}. Max 3 lines. No quotes or markdown.`;
     } else if (action === 'skills') {
-        const job = d.personal.jobTitle || 'موظف';
-        p = `اقترح 10 مهارات قوية جداً (مزيج بين تقنية وشخصية) تناسب سيرة ذاتية لوظيفة "${job}".\nاللغة: ${lang}.\nاكتب المهارات كنص مفصول بفواصل (Comma separated) فقط لا غير.`;
+        if (!d.personal.jobTitle) return showToast('يرجى كتابة المسمى الوظيفي أولاً لكي نقترح لك المهارات المناسبة!');
+        prompt = `Generate 10 skills for a ${xpContext} ${d.personal.jobTitle}. In ${langMode}. Comma separated ONLY.`;
+    } else if (action === 'enhance') {
+        const t = activeAI.target.closest('.dynamic-item');
+        const txt = t.querySelector('.exp-desc').value;
+        const job = t.querySelector('.exp-title').value || d.personal.jobTitle;
+        if (!txt) return showToast('يرجى كتابة المهام الأصلية ليتم صياغتها باحترافية!');
+        prompt = `Rewrite into professional strong ATS bullet points. Job: ${job}. Description: ${txt}. In ${langMode}. NO dashes, NO asterisks, just lines separated by newlines.`;
     }
 
-    document.getElementById('generated-prompt').value = p;
-    document.getElementById('prompt-modal').classList.add('active');
-}
+    showToast("جاري الاستعانة بالذكاء الاصطناعي... ⏳");
 
-function copyPrompt() {
-    const el = document.getElementById('generated-prompt');
-    el.select();
-    document.execCommand('copy');
-    showToast("تم نسخ الطلب! 📋 اذهب إلى ChatGPT، ضعه هناك، ثم انسخ الإجابة.");
-    closeModal('prompt-modal');
+    try {
+        const rs = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } })
+        });
+        const json = await rs.json();
+        let resTxt = json.candidates[0].content.parts[0].text.trim().replace(/[*_]/g, '');
+
+        if (activeAI.action === 'skills') {
+            document.getElementById('skills').value = resTxt.replace(/\d+\./g, '').replace(/\n/g, ',').trim();
+        } else if (activeAI.action === 'summary') {
+            document.getElementById('summary').value = resTxt;
+        } else if (activeAI.action === 'enhance') {
+            activeAI.target.closest('.dynamic-item').querySelector('.exp-desc').value = resTxt.replace(/^- /gm, '');
+        }
+        showToast("✨ تمت المهمة بنجاح!");
+    } catch (e) {
+        console.error("AI Error => ", e);
+        showToast("⚠️ حدث خطأ، تأكد من اتصالك بالإنترنت");
+    }
 }
 
 function exportCV(isPremium) {

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -7,25 +8,33 @@
     <!-- Telegram Web App -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Tajawal:wght@400;500;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Progress Bar -->
-        <div class="progress-bar-container"><div class="progress-bar" id="progress-bar"></div></div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
         <div id="toast-container"></div>
-        
+
         <!-- Prompt Builder Modal -->
         <div id="prompt-modal" class="modal">
             <div class="modal-content text-center">
                 <h3>مساعد الذكاء الاصطناعي 🤖</h3>
-                <p style="font-size: 12px; margin-bottom: 10px;">انسخ هذا الطلب وأرسله إلى ChatGPT، ثم الصق الإجابة هنا!</p>
-                <textarea id="generated-prompt" rows="6" readonly style="width:100%; border-radius:10px; margin: 10px 0; padding:10px; font-size:12px; font-family:var(--font-arabic); direction:rtl;"></textarea>
+                <p style="font-size: 12px; margin-bottom: 10px;">انسخ هذا الطلب وأرسله إلى ChatGPT، ثم الصق الإجابة هنا!
+                </p>
+                <textarea id="generated-prompt" rows="6" readonly
+                    style="width:100%; border-radius:10px; margin: 10px 0; padding:10px; font-size:12px; font-family:var(--font-arabic); direction:rtl;"></textarea>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" type="button" onclick="closeModal('prompt-modal')">إغلاق</button>
-                    <button class="btn btn-primary" type="button" onclick="copyPrompt()">نسخ الطلب لـ ChatGPT 📋</button>
+                    <button class="btn btn-primary" type="button" onclick="copyPrompt()">نسخ الطلب لـ ChatGPT
+                        📋</button>
                 </div>
             </div>
         </div>
@@ -33,11 +42,15 @@
         <!-- Payment Modal -->
         <div id="payment-modal" class="modal">
             <div class="modal-content text-center">
-                <h3 style="margin-bottom: 10px;"><i class="fa-solid fa-star" style="color:#FFD700;"></i> السيرة الاحترافية</h3>
-                <p style="margin-bottom: 20px; font-size:14px;">احصل على سيرتك الذاتية بدون أية علامة مائية أو شعارات لتطبيقنا مقابل <strong>15 نجمة تليجرام</strong>.</p>
+                <h3 style="margin-bottom: 10px;"><i class="fa-solid fa-star" style="color:#FFD700;"></i> السيرة
+                    الاحترافية</h3>
+                <p style="margin-bottom: 20px; font-size:14px;">احصل على سيرتك الذاتية بدون أية علامة مائية أو شعارات
+                    لتطبيقنا مقابل <strong>15 نجمة تليجرام</strong>.</p>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" type="button" onclick="closeModal('payment-modal')">إلغاء</button>
-                    <button class="btn btn-primary" type="button" onclick="mockPayment()" style="background: linear-gradient(135deg, #FFD700, #F5A623); color: #000;">الدفع بالنجوم ⭐️</button>
+                    <button class="btn btn-primary" type="button" onclick="mockPayment()"
+                        style="background: linear-gradient(135deg, #FFD700, #F5A623); color: #000;">الدفع بالنجوم
+                        ⭐️</button>
                 </div>
             </div>
         </div>
@@ -47,8 +60,10 @@
             <div class="step active" id="step-1">
                 <h2>نوع السيرة الذاتية</h2>
                 <div class="radio-group">
-                    <label class="radio-card"><input type="radio" name="cvType" value="fresh" checked> <span>طالب / حديث تخرج 🎓</span></label>
-                    <label class="radio-card"><input type="radio" name="cvType" value="experienced"> <span>صاحب خبرة 💼</span></label>
+                    <label class="radio-card"><input type="radio" name="cvType" value="fresh" checked> <span>طالب / حديث
+                            تخرج 🎓</span></label>
+                    <label class="radio-card"><input type="radio" name="cvType" value="experienced"> <span>صاحب خبرة
+                            💼</span></label>
                 </div>
             </div>
 
@@ -56,9 +71,12 @@
             <div class="step" id="step-2">
                 <h2>شكل السيرة (قالب ATS)</h2>
                 <div class="radio-group">
-                    <label class="radio-card"><input type="radio" name="cvTemplate" value="tpl1" checked> <span>النموذج 1 (كلاسيكي رسمي) 📄</span></label>
-                    <label class="radio-card"><input type="radio" name="cvTemplate" value="tpl2"> <span>النموذج 2 (عصري بخطوط جانبية) 📑</span></label>
-                    <label class="radio-card"><input type="radio" name="cvTemplate" value="tpl3"> <span>النموذج 3 (بسيط ومدمج) 📋</span></label>
+                    <label class="radio-card"><input type="radio" name="cvTemplate" value="tpl1" checked> <span>النموذج
+                            1 (كلاسيكي رسمي) 📄</span></label>
+                    <label class="radio-card"><input type="radio" name="cvTemplate" value="tpl2"> <span>النموذج 2 (عصري
+                            بخطوط جانبية) 📑</span></label>
+                    <label class="radio-card"><input type="radio" name="cvTemplate" value="tpl3"> <span>النموذج 3 (بسيط
+                            ومدمج) 📋</span></label>
                 </div>
             </div>
 
@@ -66,9 +84,12 @@
             <div class="step" id="step-3">
                 <h2>لغة السيرة الذاتية</h2>
                 <div class="radio-group">
-                    <label class="radio-card"><input type="radio" name="language" value="ar" checked> <span>عربي 🇸🇦</span></label>
-                    <label class="radio-card"><input type="radio" name="language" value="en"> <span>إنجليزي 🇺🇸</span></label>
-                    <label class="radio-card"><input type="radio" name="language" value="both"> <span>عربي وإنجليزي 🌍</span></label>
+                    <label class="radio-card"><input type="radio" name="language" value="ar" checked> <span>عربي
+                            🇸🇦</span></label>
+                    <label class="radio-card"><input type="radio" name="language" value="en"> <span>إنجليزي
+                            🇺🇸</span></label>
+                    <label class="radio-card"><input type="radio" name="language" value="both"> <span>عربي وإنجليزي
+                            🌍</span></label>
                 </div>
             </div>
 
@@ -76,17 +97,19 @@
             <div class="step" id="step-4">
                 <h2>البيانات الشخصية</h2>
                 <div class="form-group"><label>الاسم الكامل</label><input type="text" id="fullName" required></div>
-                <div class="form-group"><label>البريد الإلكتروني</label><input type="email" id="email" required></div>
-                <div class="form-group"><label>رقم الجوال</label><input type="tel" id="phone" required></div>
-                <div class="form-group"><label>المدينة/الدولة</label><input type="text" id="location" required></div>
+                <div class="form-group"><label>البريد الإلكتروني</label><input type="email" id="email"></div>
+                <div class="form-group"><label>رقم الجوال</label><input type="tel" id="phone"></div>
+                <div class="form-group"><label>المدينة/الدولة</label><input type="text" id="location"></div>
             </div>
 
             <!-- Step 5: Summary -->
             <div class="step" id="step-5">
                 <h2>النبذة والمسمى</h2>
-                <div class="form-group"><label>المسمى الوظيفي</label><input type="text" id="jobTitle" required></div>
+                <div class="form-group"><label>المسمى الوظيفي</label><input type="text" id="jobTitle" required
+                        placeholder="مثال: مبرمج واجهات، مهندس شبكات..."></div>
                 <div class="form-group ai-group">
-                    <button type="button" class="btn-ai" onclick="openPrompt('summary')">✨ نسخ طلب النبذة لـ ChatGPT</button>
+                    <button type="button" class="btn-ai" onclick="requestAI('summary')">✨ توليد نبذة بالذكاء
+                        الاصطناعي</button>
                     <textarea id="summary" rows="4"></textarea>
                 </div>
             </div>
@@ -107,7 +130,8 @@
                         <div class="col"><label>إلى</label><input type="text" class="exp-end"></div>
                     </div>
                     <div class="form-group ai-group">
-                        <button type="button" class="btn-ai" onclick="openPrompt('enhance', this)">✨ صياغة وإضافة تفاصيل لمهامي</button>
+                        <button type="button" class="btn-ai" onclick="requestAI('enhance', this)">✨ صياغة تفاصيل مهامي
+                            بصيغة ATS</button>
                         <textarea class="exp-desc" rows="4"></textarea>
                     </div>
                     <button type="button" class="btn-remove" onclick="this.parentElement.remove()">X</button>
@@ -137,7 +161,7 @@
             <div class="step" id="step-8">
                 <h2>المهارات</h2>
                 <div class="form-group ai-group mt-3">
-                    <button type="button" class="btn-ai" onclick="openPrompt('skills')">✨ نسخ طلب مهارات لـ ChatGPT</button>
+                    <button type="button" class="btn-ai" onclick="requestAI('skills')">✨ توليد المهارات آلياً</button>
                     <textarea id="skills" rows="4" placeholder="قيادة، برمجة (مفصولة بفاصلة)"></textarea>
                 </div>
             </div>
@@ -153,7 +177,8 @@
                 <div class="dynamic-item row" style="align-items: center">
                     <div class="col" style="flex:2"><input type="text" class="lang-name" placeholder="اللغة"></div>
                     <div class="col" style="flex:1"><input type="text" class="lang-level" placeholder="المستوى"></div>
-                    <button type="button" class="btn-remove" style="position:static" onclick="this.closest('.dynamic-item').remove()">X</button>
+                    <button type="button" class="btn-remove" style="position:static"
+                        onclick="this.closest('.dynamic-item').remove()">X</button>
                 </div>
             </template>
 
@@ -165,16 +190,19 @@
                     <button type="button" class="btn btn-secondary" onclick="exportCV(false)">
                         📄 تصدير مجاني (مدعوم بعلامة مائية)
                     </button>
-                    <button type="button" class="btn btn-primary" onclick="exportCV(true)" style="background: linear-gradient(135deg, #FFD700, #F5A623); color: #000;">
+                    <button type="button" class="btn btn-primary" onclick="exportCV(true)"
+                        style="background: linear-gradient(135deg, #FFD700, #F5A623); color: #000;">
                         ⭐️ تصدير احترافي (بدون علامة مائية)
                     </button>
                 </div>
-                <div id="export-status" class="status-box" style="margin-top:15px; text-align:center; display:none;"></div>
+                <div id="export-status" class="status-box" style="margin-top:15px; text-align:center; display:none;">
+                </div>
             </div>
         </form>
 
         <div class="nav-buttons">
-            <button class="btn btn-secondary" type="button" id="btn-prev" onclick="nav(-1)" style="display:none;">السابق</button>
+            <button class="btn btn-secondary" type="button" id="btn-prev" onclick="nav(-1)"
+                style="display:none;">السابق</button>
             <button class="btn btn-primary" type="button" id="btn-next" onclick="nav(1)">التالي</button>
         </div>
     </div>
@@ -186,4 +214,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>
