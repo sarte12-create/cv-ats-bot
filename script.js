@@ -179,55 +179,43 @@ function loadData() {
 function buildReviewStep() {
     const d = saveData();
     const reviewDiv = document.getElementById('review-content');
-    let missingText = [];
-    let promptRequests = [];
     const lang = d.lang === 'en' ? 'الإنجليزية' : 'العربية';
     const xpContext = d.cvType === 'fresh' ? 'طالب حديث التخرج أو مبتدئ' : 'صاحب خبرة مهنية';
     const job = d.personal.jobTitle || '[لم يحدد بعد]';
     
     let html = ``;
+    let promptRequests = [];
 
-    if (!document.getElementById('summary').value.trim()) {
-        missingText.push("النبذة التعريفية");
-        promptRequests.push("1. كتابة نبذة تعريفية (Summary) قوية واحترافية متوافقة مع أنظمة الـ ATS في 3 أسطر.");
-        html += `<div class="form-group"><label style="color:var(--primary-color);">النبذة المقترحة (الصقها هنا)</label><textarea id="review-summary" rows="3" placeholder="ضع إجابة شات جي بي تي هنا..."></textarea></div>`;
-    }
+    // 1. Summary (Always present)
+    promptRequests.push("1. صياغة نبذة تعريفية (Summary) قوية واحترافية متوافقة مع أنظمة الـ ATS في 3 أسطر.");
+    html += `<div class="form-group"><label style="color:var(--primary-color);">النبذة المقترحة</label><textarea id="review-summary" rows="3" placeholder="ضع إجابة شات جي بي تي هنا...">${document.getElementById('summary').value}</textarea></div>`;
 
-    let expLacking = false;
+    // 2. Experiences
     const exps = document.querySelectorAll('#experiences-list .dynamic-item');
-    exps.forEach((ex, i) => {
-        const desc = ex.querySelector('.exp-desc').value.trim();
-        const title = ex.querySelector('.exp-title').value.trim() || 'مهام الوظيفة السابقة';
-        if (!desc) {
-            expLacking = true;
-            promptRequests.push(`- صياغة نقاط إنجازات احترافية بصيغة (Bullet points ATS) لخبرتي كـ "${title}".`);
-            html += `<div class="form-group"><label style="color:var(--primary-color);">مهام وظيفة (${title}) المقترحة</label><textarea id="review-exp-${i}" rows="3" placeholder="ضع إجابته هنا..."></textarea></div>`;
-        }
-    });
-    if (expLacking) missingText.push("تفاصيل ومهام بعض الخبرات");
-
-    if (!document.getElementById('skills').value.trim()) {
-        missingText.push("المهارات المكتسبة");
-        promptRequests.push("2. اقتراح 10 مهارات قوية تقنية وشخصية (مفصولة بفواصل المفردات فقط).");
-        html += `<div class="form-group"><label style="color:var(--primary-color);">المهارات المقترحة</label><textarea id="review-skills" rows="3" placeholder="ضع إجابته هنا..."></textarea></div>`;
+    if (exps.length > 0) {
+        exps.forEach((ex, i) => {
+            const desc = ex.querySelector('.exp-desc').value.trim();
+            const title = ex.querySelector('.exp-title').value.trim() || 'وظيفة سابقة';
+            promptRequests.push(`- صياغة إنجازات وتأثير احترافي بصيغة (Bullet points ATS) لخبرتي كـ "${title}".\nالمهام الأصلية: ${desc || '[بدون مهام]'} \n`);
+            html += `<div class="form-group"><label style="color:var(--primary-color);">تطوير مهام (${title})</label><textarea id="review-exp-${i}" rows="3" placeholder="ضع الإجابة هنا...">${desc}</textarea></div>`;
+        });
     }
 
-    if (missingText.length === 0) {
-        reviewDiv.innerHTML = `<div class="status-box" style="text-align:center; color:green; background:#e8f5e9; border:none;">🎉 جميع بياناتك الرئيسية مكتملة! السيرة جاهزة للتصدير، يمكنك المتابعة للخطوة القادمة مباشرة.</div>`;
-        return;
-    }
+    // 3. Skills (Always present)
+    promptRequests.push("2. اقتراح واعتماد 10 مهارات قوية تقنية وشخصية (مفصولة بفواصل المفردات فقط).");
+    html += `<div class="form-group"><label style="color:var(--primary-color);">المهارات المقترحة</label><textarea id="review-skills" rows="3" placeholder="ضع الإجابة هنا...">${document.getElementById('skills').value}</textarea></div>`;
 
-    let p = `أنا أقوم بإنشاء سيرة ذاتية احترافية.\nالمسمى الوظيفي: ${job} (${xpContext}).\nاللغة المطلوبة: ${lang}.\nأحتاج منك مساعدتي في إكمال النواقص بصيغة احترافية ومباشرة بدون أي مقدمات ترحيبية:\n` + promptRequests.join('\n');
+    let p = `أنا أقوم بإنشاء سيرة ذاتية احترافية.\nالمسمى الوظيفي: ${job} (${xpContext}).\nاللغة المطلوبة: ${lang}.\nأحتاج منك مساعدتي في إكمال النواقص أو تطوير المكتوب بصيغة احترافية ومباشرة بدون أي مقدمات ترحيبية:\n\n` + promptRequests.join('\n');
 
     reviewDiv.innerHTML = `
         <div class="status-box" style="margin-bottom: 15px; font-size:13px;">
-            <p style="margin-bottom:5px;"><strong>لاحظنا وجود بيانات فارغة:</strong> ${missingText.join('، ')}.</p>
-            <p>لا تقلق، صممنا لك أمراً (Prompt) جاهزاً. انسخه وأرسله إلى ChatGPT أو Gemini ثم الصق النتيجة في المربعات بالأسفل لتكتمل سيرتك فوراً بطريقة سحرية!</p>
+            <p style="margin-bottom:5px;"><strong>جاهز للمسة السحرية؟ 🪄</strong> هذه أداة المراجعة الذكية للذكاء الاصطناعي. يمكنك استخدامها لإكمال الفراغات أو <strong>تطوير</strong> ما كتبته مسبقاً لجعله أقوى.</p>
+            <p>لقد صممنا طلب (Prompt) شامل يحتوي على خبراتك. انسخه لـ ChatGPT وثم قم بلصق الإجابة المنقحة في المربعات بالأسفل لدمجها فوراً.</p>
         </div>
         <textarea id="review-prompt" rows="6" readonly style="width:100%; border-radius:10px; margin-bottom: 15px; padding:10px; font-size:12px; font-family:var(--font-arabic); direction:rtl; background:#f4f4f4; border:1px dashed #ccc;">${p}</textarea>
         <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="copyReviewPrompt()">✨ نسخ الطلب الجاهز لـ ChatGPT 📋</button>
         <div style="border-top: 1px solid #eee; padding-top: 15px; text-align:right;">
-            <h3 style="margin-bottom:10px; font-size:16px;">ألصق النتائج هنا لتعبئتها تلقائياً:</h3>
+            <h3 style="margin-bottom:10px; font-size:16px;">مراجعة الإجابات النهائية وتعديلها:</h3>
             ${html}
         </div>
     `;
