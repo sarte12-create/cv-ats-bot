@@ -288,10 +288,21 @@ async function payWithStars() {
         const json = await res.json();
 
         if (json.ok && json.result) {
+            // Provide a manual fallback link in the UI in case openInvoice silently hangs
+            const statusBox = document.getElementById('export-status');
+            statusBox.style.display = "block";
+            statusBox.innerHTML = `
+                <p style="color:var(--primary-color); font-weight:bold; margin-bottom:10px;">تم تجهيز الفاتورة بنجاح ✅</p>
+                <a href="${json.result}" target="_blank" class="btn btn-primary" style="display:block; text-decoration:none; margin-bottom:10px;">انقر هنا للدفع (إذا لم تفتح الشاشة تلقائياً) ⭐️</a>
+                <p style="font-size:12px; margin-bottom:10px; color:var(--hint-color);">بعد إتمام الدفع بنجاح، اضغط على الزر بالأسفل:</p>
+                <button class="btn btn-secondary" onclick="generateAndSendPDF(true)">📥 تصدير السيرة الاحترافية الآن</button>
+            `;
+
             try {
                 tg.openInvoice(json.result, function (status) {
                     if (status === 'paid') {
                         showToast("⭐️ شكراً لثقتك! نجحت العملية. جاري تصدير سيرتك الاحترافية...");
+                        statusBox.innerHTML = "<p>✅ تم الدفع بنجاح، جاري التحميل...</p>";
                         generateAndSendPDF(true);
                     } else if (status === 'cancelled') {
                         showToast("❌ تم إلغاء عملية الدفع.");
