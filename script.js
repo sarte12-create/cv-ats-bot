@@ -16,18 +16,18 @@ tg.onEvent('themeChanged', () => {
 });
 
 let currentStep = 1;
-const totalSteps = 11;
+const totalSteps = 12;
 let freeAITokens = 9999; // Unlimited for now based on user request
 
 const translations = {
     ar: {
-        summary: "النبذة   التعريفية", experience: "الخبرات المهنية",
-        education: "التعليم", skills: "المهارات", languages: "اللغات",
+        summary: "النبذة التعريفية", experience: "الخبرات المهنية",
+        education: "التعليم", courses: "الدورات والشهادات التدريبية", skills: "المهارات", languages: "اللغات",
         watermark: "تم إنشاء هذه السيرة مجاناً عبر بوت @ats3cv_bot", present: "الحاضر"
     },
     en: {
         summary: "Professional Summary", experience: "Work Experience",
-        education: "Education", skills: "Skills", languages: "Languages",
+        education: "Education", courses: "Training & Certifications", skills: "Skills", languages: "Languages",
         watermark: "Created for free via @ats3cv_bot", present: "Present"
     }
 };
@@ -59,7 +59,7 @@ function validateStep(step) {
 
 function nav(dir) {
     if (dir === 1 && !validateStep(currentStep)) return;
-    if (dir === 1 && currentStep === 10) syncReviewBack();
+    if (dir === 1 && currentStep === 11) syncReviewBack();
     saveData();
     document.getElementById(`step-${currentStep}`).classList.remove('active');
     currentStep += dir;
@@ -72,12 +72,12 @@ function nav(dir) {
         btnNext.style.display = 'none';
     } else {
         btnNext.style.display = 'block';
-        btnNext.textContent = currentStep === 10 ? "اكتملت المراجعة (التالي) 🚀" : "التالي";
+        btnNext.textContent = currentStep === 11 ? "اكتملت المراجعة (التالي) 🚀" : "التالي";
         btnNext.onclick = () => nav(1);
     }
 
-    if (currentStep === 10 && dir === 1) buildReviewStep();
-    if (currentStep === 11) preparePDFPreview(false);
+    if (currentStep === 11 && dir === 1) buildReviewStep();
+    if (currentStep === 12) preparePDFPreview(false);
 
     updateProgress();
 }
@@ -88,6 +88,9 @@ function addExperience() {
 function addEducation() {
     document.getElementById('education-list').appendChild(document.getElementById('tpl-education').content.cloneNode(true));
 }
+function addCourse() {
+    document.getElementById('courses-list').appendChild(document.getElementById('tpl-course').content.cloneNode(true));
+}
 function addLanguage() {
     document.getElementById('languages-list').appendChild(document.getElementById('tpl-language').content.cloneNode(true));
 }
@@ -96,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadData();
     if (!document.getElementById('experiences-list').children.length) addExperience();
     if (!document.getElementById('education-list').children.length) addEducation();
+    if (!document.getElementById('courses-list').children.length) addCourse();
     if (!document.getElementById('languages-list').children.length) addLanguage();
     updateProgress();
 });
@@ -124,6 +128,11 @@ function saveData() {
             inst: el.querySelector('.edu-inst').value,
             year: el.querySelector('.edu-year').value
         })).filter(x => x.degree),
+        courses: Array.from(document.querySelectorAll('#courses-list .dynamic-item')).map(el => ({
+            name: el.querySelector('.course-name').value,
+            inst: el.querySelector('.course-inst').value,
+            year: el.querySelector('.course-year').value
+        })).filter(x => x.name),
         skills: getVal('skills'),
         languages: Array.from(document.querySelectorAll('#languages-list .dynamic-item')).map(el => ({
             name: el.querySelector('.lang-name').value,
@@ -172,6 +181,13 @@ function loadData() {
             const last = document.getElementById('languages-list').lastElementChild;
             last.querySelector('.lang-name').value = e.name;
             last.querySelector('.lang-level').value = e.level;
+        });
+        if (data.courses) data.courses.forEach(e => {
+            addCourse();
+            const last = document.getElementById('courses-list').lastElementChild;
+            last.querySelector('.course-name').value = e.name;
+            last.querySelector('.course-inst').value = e.inst;
+            last.querySelector('.course-year').value = e.year;
         });
     } catch (e) { }
 }
@@ -272,16 +288,22 @@ async function payWithStars() {
         const json = await res.json();
 
         if (json.ok && json.result) {
-            tg.openInvoice(json.result, function (status) {
-                if (status === 'paid') {
-                    showToast("⭐️ شكراً لثقتك! نجحت العملية. جاري تصدير سيرتك الاحترافية...");
-                    generateAndSendPDF(true);
-                } else if (status === 'cancelled') {
-                    showToast("❌ تم إلغاء عملية الدفع.");
-                } else {
-                    showToast("⚠️ تعذر إتمام الدفع أو حدثت مشكلة.");
-                }
-            });
+            try {
+                tg.openInvoice(json.result, function (status) {
+                    if (status === 'paid') {
+                        showToast("⭐️ شكراً لثقتك! نجحت العملية. جاري تصدير سيرتك الاحترافية...");
+                        generateAndSendPDF(true);
+                    } else if (status === 'cancelled') {
+                        showToast("❌ تم إلغاء عملية الدفع.");
+                    } else {
+                        showToast("⚠️ تعذر إتمام الدفع أو حدثت مشكلة.");
+                    }
+                });
+            } catch (openErr) {
+                // Fallback for desktop versions where openInvoice throws Error
+                tg.openTelegramLink(json.result);
+                showToast("تم فتح الفاتورة، يرجى إتمام الدفع أو المحاولة عبر الهاتف");
+            }
         } else {
             throw new Error("لم يتمكن البوت من توليد رابط الفاتورة.");
         }
@@ -356,6 +378,17 @@ function preparePDFPreview(isPremium = false) {
         html += `<div class="pdf-section"><div class="pdf-section-title">${dict.skills}</div><div class="pdf-skills-list" dir="auto">`;
         html += d.skills.split(',').filter(x => x.trim()).map(s => s.trim()).join(' &bull; ');
         html += `</div></div>`;
+    }
+
+    if (d.courses && d.courses.length) {
+        html += `<div class="pdf-section"><div class="pdf-section-title">${dict.courses}</div>`;
+        d.courses.forEach(c => {
+            html += `<div class="pdf-item">
+                <div class="pdf-item-title" dir="auto">${c.name}</div>
+                <div class="pdf-item-meta" dir="auto">${c.inst} • ${c.year}</div>
+            </div>`;
+        });
+        html += `</div>`;
     }
 
     if (d.languages?.length) {

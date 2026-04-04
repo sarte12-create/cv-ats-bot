@@ -139,8 +139,26 @@
                 </div>
             </template>
 
-            <!-- Step 8: Skills -->
+            <!-- Step 8: Courses -->
             <div class="step" id="step-8">
+                <h2>الدورات التدريبية</h2>
+                <div id="courses-list"></div>
+                <button type="button" class="btn btn-secondary" onclick="addCourse()">+ إضافة دورة (اختياري)</button>
+            </div>
+
+            <template id="tpl-course">
+                <div class="dynamic-item">
+                    <div class="form-group"><label>اسم الدورة</label><input type="text" class="course-name"></div>
+                    <div class="form-group row">
+                        <div class="col"><label>الجهة المانحة</label><input type="text" class="course-inst"></div>
+                        <div class="col"><label>السنة</label><input type="text" class="course-year"></div>
+                    </div>
+                    <button type="button" class="btn-remove" onclick="this.parentElement.remove()">X</button>
+                </div>
+            </template>
+
+            <!-- Step 9: Skills -->
+            <div class="step" id="step-9">
                 <h2>المهارات</h2>
                 <div class="form-group mt-3">
                     <label>اكتب مهاراتك (اختياري)</label>
@@ -148,8 +166,8 @@
                 </div>
             </div>
 
-            <!-- Step 9: Languages -->
-            <div class="step" id="step-9">
+            <!-- Step 10: Languages -->
+            <div class="step" id="step-10">
                 <h2>اللغات</h2>
                 <div id="languages-list"></div>
                 <button type="button" class="btn btn-secondary" onclick="addLanguage()">+ إضافة لغة</button>
@@ -164,14 +182,14 @@
                 </div>
             </template>
 
-            <!-- Step 10: AI Review -->
-            <div class="step" id="step-10">
+            <!-- Step 11: AI Review -->
+            <div class="step" id="step-11">
                 <h2>المراجعة الذكية للنواقص</h2>
                 <div id="review-content"></div>
             </div>
 
-            <!-- Step 11: Export -->
-            <div class="step" id="step-11">
+            <!-- Step 12: Export -->
+            <div class="step" id="step-12">
                 <h2>المعاينة والتصدير</h2>
                 <p>لقد صممت سيرتك الذاتية بنجاح! اختر طريقة التصدير التي تناسبك:</p>
                 <div class="export-options" style="display:flex; flex-direction:column; gap:15px; margin-top:20px;">
