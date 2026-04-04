@@ -17,15 +17,27 @@
         <div class="progress-bar-container"><div class="progress-bar" id="progress-bar"></div></div>
         <div id="toast-container"></div>
         
-        <!-- Stars Modal Mock -->
-        <div id="stars-modal" class="modal">
-            <div class="modal-content">
-                <i class="fa-solid fa-star star-icon"></i>
-                <h3>ميزة مدفوعة مؤقتاً مجانية ✨</h3>
-                <p>هذه الخدمة ستتطلب مستقبلاً <strong>10 نجوم تليجرام</strong>. لديك اليوم <span id="free-tokens">3</span> محاولات مجانية!</p>
+        <!-- Prompt Builder Modal -->
+        <div id="prompt-modal" class="modal">
+            <div class="modal-content text-center">
+                <h3>مساعد الذكاء الاصطناعي 🤖</h3>
+                <p style="font-size: 12px; margin-bottom: 10px;">انسخ هذا الطلب وأرسله إلى ChatGPT، ثم الصق الإجابة هنا!</p>
+                <textarea id="generated-prompt" rows="6" readonly style="width:100%; border-radius:10px; margin: 10px 0; padding:10px; font-size:12px; font-family:var(--font-arabic); direction:rtl;"></textarea>
                 <div class="modal-actions">
-                    <button class="btn btn-secondary" type="button" onclick="closeModal()">إلغاء</button>
-                    <button class="btn btn-primary" type="button" id="confirm-ai-btn">استمرار للتعزيز</button>
+                    <button class="btn btn-secondary" type="button" onclick="closeModal('prompt-modal')">إغلاق</button>
+                    <button class="btn btn-primary" type="button" onclick="copyPrompt()">نسخ الطلب لـ ChatGPT 📋</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Modal -->
+        <div id="payment-modal" class="modal">
+            <div class="modal-content text-center">
+                <h3 style="margin-bottom: 10px;"><i class="fa-solid fa-star" style="color:#FFD700;"></i> السيرة الاحترافية</h3>
+                <p style="margin-bottom: 20px; font-size:14px;">احصل على سيرتك الذاتية بدون أية علامة مائية أو شعارات لتطبيقنا مقابل <strong>15 نجمة تليجرام</strong>.</p>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" type="button" onclick="closeModal('payment-modal')">إلغاء</button>
+                    <button class="btn btn-primary" type="button" onclick="mockPayment()" style="background: linear-gradient(135deg, #FFD700, #F5A623); color: #000;">الدفع بالنجوم ⭐️</button>
                 </div>
             </div>
         </div>
@@ -74,7 +86,7 @@
                 <h2>النبذة والمسمى</h2>
                 <div class="form-group"><label>المسمى الوظيفي</label><input type="text" id="jobTitle" required></div>
                 <div class="form-group ai-group">
-                    <button type="button" class="btn-ai" onclick="requestAI('summary')">✨ توليد نبذة بالذكاء الاصطناعي</button>
+                    <button type="button" class="btn-ai" onclick="openPrompt('summary')">✨ نسخ طلب النبذة لـ ChatGPT</button>
                     <textarea id="summary" rows="4"></textarea>
                 </div>
             </div>
@@ -95,7 +107,7 @@
                         <div class="col"><label>إلى</label><input type="text" class="exp-end"></div>
                     </div>
                     <div class="form-group ai-group">
-                        <button type="button" class="btn-ai" onclick="requestAI('enhance', this)">✨ تحسين كنقاط (ATS)</button>
+                        <button type="button" class="btn-ai" onclick="openPrompt('enhance', this)">✨ صياغة وإضافة تفاصيل لمهامي</button>
                         <textarea class="exp-desc" rows="4"></textarea>
                     </div>
                     <button type="button" class="btn-remove" onclick="this.parentElement.remove()">X</button>
@@ -125,7 +137,7 @@
             <div class="step" id="step-8">
                 <h2>المهارات</h2>
                 <div class="form-group ai-group mt-3">
-                    <button type="button" class="btn-ai" onclick="requestAI('skills')">✨ اقتراح مهارات</button>
+                    <button type="button" class="btn-ai" onclick="openPrompt('skills')">✨ نسخ طلب مهارات لـ ChatGPT</button>
                     <textarea id="skills" rows="4" placeholder="قيادة، برمجة (مفصولة بفاصلة)"></textarea>
                 </div>
             </div>
@@ -148,10 +160,16 @@
             <!-- Step 10: Export -->
             <div class="step" id="step-10">
                 <h2>المعاينة والتصدير</h2>
-                <p>النسخة الحالية مجانية وتتضمن علامة مائية صغيرة لدعم التطبيق.</p>
-                <div id="export-status" class="status-box" style="margin-top: 15px; text-align: center; font-weight: bold; color: var(--primary-color);">
-                    الرجاء النقر أدناه كخطوة أخيرة لتوليد الـ PDF 🚀
+                <p>لقد صممت سيرتك الذاتية بنجاح! اختر طريقة التصدير التي تناسبك:</p>
+                <div class="export-options" style="display:flex; flex-direction:column; gap:15px; margin-top:20px;">
+                    <button type="button" class="btn btn-secondary" onclick="exportCV(false)">
+                        📄 تصدير مجاني (مدعوم بعلامة مائية)
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="exportCV(true)" style="background: linear-gradient(135deg, #FFD700, #F5A623); color: #000;">
+                        ⭐️ تصدير احترافي (بدون علامة مائية)
+                    </button>
                 </div>
+                <div id="export-status" class="status-box" style="margin-top:15px; text-align:center; display:none;"></div>
             </div>
         </form>
 
