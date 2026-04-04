@@ -16,7 +16,7 @@ tg.onEvent('themeChanged', () => {
 });
 
 let currentStep = 1;
-const totalSteps = 10;
+const totalSteps = 11;
 let freeAITokens = 9999; // Unlimited for now based on user request
 
 const translations = {
@@ -59,6 +59,7 @@ function validateStep(step) {
 
 function nav(dir) {
     if (dir === 1 && !validateStep(currentStep)) return;
+    if (dir === 1 && currentStep === 10) syncReviewBack();
     saveData();
     document.getElementById(`step-${currentStep}`).classList.remove('active');
     currentStep += dir;
@@ -71,9 +72,13 @@ function nav(dir) {
         btnNext.style.display = 'none';
     } else {
         btnNext.style.display = 'block';
-        btnNext.textContent = "التالي";
+        btnNext.textContent = currentStep === 10 ? "اكتملت المراجعة (التالي) 🚀" : "التالي";
         btnNext.onclick = () => nav(1);
     }
+    
+    if (currentStep === 10 && dir === 1) buildReviewStep();
+    if (currentStep === 11) preparePDFPreview(false);
+    
     updateProgress();
 }
 
@@ -171,53 +176,84 @@ function loadData() {
     } catch (e) { }
 }
 
-let activeAI = { action: '', target: null };
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-
-async function requestAI(action, el = null) {
-    activeAI = { action, target: el };
+function buildReviewStep() {
     const d = saveData();
-    const langMode = d.lang === 'en' ? 'English' : 'Arabic';
-    const xpContext = d.cvType === 'fresh' ? 'fresh graduate/entry-level' : 'experienced professional';
-    let prompt = "";
+    const reviewDiv = document.getElementById('review-content');
+    let missingText = [];
+    let promptRequests = [];
+    const lang = d.lang === 'en' ? 'الإنجليزية' : 'العربية';
+    const xpContext = d.cvType === 'fresh' ? 'طالب حديث التخرج أو مبتدئ' : 'صاحب خبرة مهنية';
+    const job = d.personal.jobTitle || '[لم يحدد بعد]';
+    
+    let html = ``;
 
-    if (action === 'summary') {
-        if (!d.personal.jobTitle) return showToast('يرجى كتابة المسمى الوظيفي أولاً لنتمكن من توليد النبذة!');
-        const skillsText = d.skills ? `with skills: ${d.skills}` : '';
-        prompt = `Write a short CV summary for a ${xpContext} ${d.personal.jobTitle} ${skillsText}. In ${langMode}. Max 3 lines. No quotes or markdown.`;
-    } else if (action === 'skills') {
-        if (!d.personal.jobTitle) return showToast('يرجى كتابة المسمى الوظيفي أولاً لكي نقترح لك المهارات المناسبة!');
-        prompt = `Generate 10 skills for a ${xpContext} ${d.personal.jobTitle}. In ${langMode}. Comma separated ONLY.`;
-    } else if (action === 'enhance') {
-        const t = activeAI.target.closest('.dynamic-item');
-        const txt = t.querySelector('.exp-desc').value;
-        const job = t.querySelector('.exp-title').value || d.personal.jobTitle;
-        if (!txt) return showToast('يرجى كتابة المهام الأصلية ليتم صياغتها باحترافية!');
-        prompt = `Rewrite into professional strong ATS bullet points. Job: ${job}. Description: ${txt}. In ${langMode}. NO dashes, NO asterisks, just lines separated by newlines.`;
+    if (!document.getElementById('summary').value.trim()) {
+        missingText.push("النبذة التعريفية");
+        promptRequests.push("1. كتابة نبذة تعريفية (Summary) قوية واحترافية متوافقة مع أنظمة الـ ATS في 3 أسطر.");
+        html += `<div class="form-group"><label style="color:var(--primary-color);">النبذة المقترحة (الصقها هنا)</label><textarea id="review-summary" rows="3" placeholder="ضع إجابة شات جي بي تي هنا..."></textarea></div>`;
     }
 
-    showToast("جاري الاستعانة بالذكاء الاصطناعي... ⏳");
-
-    try {
-        const rs = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } })
-        });
-        const json = await rs.json();
-        let resTxt = json.candidates[0].content.parts[0].text.trim().replace(/[*_]/g, '');
-
-        if (activeAI.action === 'skills') {
-            document.getElementById('skills').value = resTxt.replace(/\d+\./g, '').replace(/\n/g, ',').trim();
-        } else if (activeAI.action === 'summary') {
-            document.getElementById('summary').value = resTxt;
-        } else if (activeAI.action === 'enhance') {
-            activeAI.target.closest('.dynamic-item').querySelector('.exp-desc').value = resTxt.replace(/^- /gm, '');
+    let expLacking = false;
+    const exps = document.querySelectorAll('#experiences-list .dynamic-item');
+    exps.forEach((ex, i) => {
+        const desc = ex.querySelector('.exp-desc').value.trim();
+        const title = ex.querySelector('.exp-title').value.trim() || 'مهام الوظيفة السابقة';
+        if (!desc) {
+            expLacking = true;
+            promptRequests.push(`- صياغة نقاط إنجازات احترافية بصيغة (Bullet points ATS) لخبرتي كـ "${title}".`);
+            html += `<div class="form-group"><label style="color:var(--primary-color);">مهام وظيفة (${title}) المقترحة</label><textarea id="review-exp-${i}" rows="3" placeholder="ضع إجابته هنا..."></textarea></div>`;
         }
-        showToast("✨ تمت المهمة بنجاح!");
-    } catch (e) {
-        console.error("AI Error => ", e);
-        showToast("⚠️ حدث خطأ، تأكد من اتصالك بالإنترنت");
+    });
+    if (expLacking) missingText.push("تفاصيل ومهام بعض الخبرات");
+
+    if (!document.getElementById('skills').value.trim()) {
+        missingText.push("المهارات المكتسبة");
+        promptRequests.push("2. اقتراح 10 مهارات قوية تقنية وشخصية (مفصولة بفواصل المفردات فقط).");
+        html += `<div class="form-group"><label style="color:var(--primary-color);">المهارات المقترحة</label><textarea id="review-skills" rows="3" placeholder="ضع إجابته هنا..."></textarea></div>`;
     }
+
+    if (missingText.length === 0) {
+        reviewDiv.innerHTML = `<div class="status-box" style="text-align:center; color:green; background:#e8f5e9; border:none;">🎉 جميع بياناتك الرئيسية مكتملة! السيرة جاهزة للتصدير، يمكنك المتابعة للخطوة القادمة مباشرة.</div>`;
+        return;
+    }
+
+    let p = `أنا أقوم بإنشاء سيرة ذاتية احترافية.\nالمسمى الوظيفي: ${job} (${xpContext}).\nاللغة المطلوبة: ${lang}.\nأحتاج منك مساعدتي في إكمال النواقص بصيغة احترافية ومباشرة بدون أي مقدمات ترحيبية:\n` + promptRequests.join('\n');
+
+    reviewDiv.innerHTML = `
+        <div class="status-box" style="margin-bottom: 15px; font-size:13px;">
+            <p style="margin-bottom:5px;"><strong>لاحظنا وجود بيانات فارغة:</strong> ${missingText.join('، ')}.</p>
+            <p>لا تقلق، صممنا لك أمراً (Prompt) جاهزاً. انسخه وأرسله إلى ChatGPT أو Gemini ثم الصق النتيجة في المربعات بالأسفل لتكتمل سيرتك فوراً بطريقة سحرية!</p>
+        </div>
+        <textarea id="review-prompt" rows="6" readonly style="width:100%; border-radius:10px; margin-bottom: 15px; padding:10px; font-size:12px; font-family:var(--font-arabic); direction:rtl; background:#f4f4f4; border:1px dashed #ccc;">${p}</textarea>
+        <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="copyReviewPrompt()">✨ نسخ الطلب الجاهز لـ ChatGPT 📋</button>
+        <div style="border-top: 1px solid #eee; padding-top: 15px; text-align:right;">
+            <h3 style="margin-bottom:10px; font-size:16px;">ألصق النتائج هنا لتعبئتها تلقائياً:</h3>
+            ${html}
+        </div>
+    `;
+}
+
+function copyReviewPrompt() {
+    const el = document.getElementById('review-prompt');
+    el.select();
+    document.execCommand('copy');
+    showToast("✅ تم النسخ بنجاح! الصقه في الذكاء الاصطناعي الخاص بك.");
+}
+
+function syncReviewBack() {
+    const rs = document.getElementById('review-summary');
+    if (rs && rs.value.trim()) document.getElementById('summary').value = rs.value.trim();
+
+    const sk = document.getElementById('review-skills');
+    if (sk && sk.value.trim()) document.getElementById('skills').value = sk.value.trim();
+
+    const exps = document.querySelectorAll('#experiences-list .dynamic-item');
+    exps.forEach((ex, i) => {
+        const re = document.getElementById(`review-exp-${i}`);
+        if (re && re.value.trim()) {
+            ex.querySelector('.exp-desc').value = re.value.trim();
+        }
+    });
 }
 
 function exportCV(isPremium) {

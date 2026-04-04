@@ -23,21 +23,7 @@
         </div>
         <div id="toast-container"></div>
 
-        <!-- Prompt Builder Modal -->
-        <div id="prompt-modal" class="modal">
-            <div class="modal-content text-center">
-                <h3>مساعد الذكاء الاصطناعي 🤖</h3>
-                <p style="font-size: 12px; margin-bottom: 10px;">انسخ هذا الطلب وأرسله إلى ChatGPT، ثم الصق الإجابة هنا!
-                </p>
-                <textarea id="generated-prompt" rows="6" readonly
-                    style="width:100%; border-radius:10px; margin: 10px 0; padding:10px; font-size:12px; font-family:var(--font-arabic); direction:rtl;"></textarea>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" type="button" onclick="closeModal('prompt-modal')">إغلاق</button>
-                    <button class="btn btn-primary" type="button" onclick="copyPrompt()">نسخ الطلب لـ ChatGPT
-                        📋</button>
-                </div>
-            </div>
-        </div>
+
 
         <!-- Payment Modal -->
         <div id="payment-modal" class="modal">
@@ -107,9 +93,8 @@
                 <h2>النبذة والمسمى</h2>
                 <div class="form-group"><label>المسمى الوظيفي</label><input type="text" id="jobTitle" required
                         placeholder="مثال: مبرمج واجهات، مهندس شبكات..."></div>
-                <div class="form-group ai-group">
-                    <button type="button" class="btn-ai" onclick="requestAI('summary')">✨ توليد نبذة بالذكاء
-                        الاصطناعي</button>
+                <div class="form-group">
+                    <label>النبذة (اختياري يمكنك تخطيها للذكاء الاصطناعي لاحقاً)</label>
                     <textarea id="summary" rows="4"></textarea>
                 </div>
             </div>
@@ -129,11 +114,8 @@
                         <div class="col"><label>من</label><input type="text" class="exp-start"></div>
                         <div class="col"><label>إلى</label><input type="text" class="exp-end"></div>
                     </div>
-                    <div class="form-group ai-group">
-                        <button type="button" class="btn-ai" onclick="requestAI('enhance', this)">✨ صياغة تفاصيل مهامي
-                            بصيغة ATS</button>
-                        <textarea class="exp-desc" rows="4"></textarea>
-                    </div>
+                    <div class="form-group"><label>المهام (اختياري)</label><textarea class="exp-desc"
+                            rows="4"></textarea></div>
                     <button type="button" class="btn-remove" onclick="this.parentElement.remove()">X</button>
                 </div>
             </template>
@@ -160,8 +142,8 @@
             <!-- Step 8: Skills -->
             <div class="step" id="step-8">
                 <h2>المهارات</h2>
-                <div class="form-group ai-group mt-3">
-                    <button type="button" class="btn-ai" onclick="requestAI('skills')">✨ توليد المهارات آلياً</button>
+                <div class="form-group mt-3">
+                    <label>اكتب مهاراتك (اختياري)</label>
                     <textarea id="skills" rows="4" placeholder="قيادة، برمجة (مفصولة بفاصلة)"></textarea>
                 </div>
             </div>
@@ -182,8 +164,14 @@
                 </div>
             </template>
 
-            <!-- Step 10: Export -->
+            <!-- Step 10: AI Review -->
             <div class="step" id="step-10">
+                <h2>المراجعة الذكية للنواقص</h2>
+                <div id="review-content"></div>
+            </div>
+
+            <!-- Step 11: Export -->
+            <div class="step" id="step-11">
                 <h2>المعاينة والتصدير</h2>
                 <p>لقد صممت سيرتك الذاتية بنجاح! اختر طريقة التصدير التي تناسبك:</p>
                 <div class="export-options" style="display:flex; flex-direction:column; gap:15px; margin-top:20px;">
