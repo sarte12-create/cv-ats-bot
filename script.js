@@ -212,7 +212,7 @@ function buildReviewStep() {
             <p style="margin-bottom:5px;"><strong>جاهز للمسة السحرية؟ 🪄</strong> هذه أداة المراجعة الذكية للذكاء الاصطناعي. يمكنك استخدامها لإكمال الفراغات أو <strong>تطوير</strong> ما كتبته مسبقاً لجعله أقوى.</p>
             <p>لقد صممنا طلب (Prompt) شامل يحتوي على خبراتك. انسخه لـ ChatGPT وثم قم بلصق الإجابة المنقحة في المربعات بالأسفل لدمجها فوراً.</p>
         </div>
-        <textarea id="review-prompt" rows="6" readonly style="width:100%; border-radius:10px; margin-bottom: 15px; padding:10px; font-size:12px; font-family:var(--font-arabic); direction:rtl; background:#f4f4f4; border:1px dashed #ccc;">${p}</textarea>
+        <textarea id="review-prompt" rows="6" readonly style="width:100%; border-radius:10px; margin-bottom: 15px; padding:10px; font-size:12px; font-family:var(--font-arabic); direction:rtl; background:var(--bg-color); color:var(--text-color); border:1px dashed var(--primary-color);">${p}</textarea>
         <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="copyReviewPrompt()">✨ نسخ الطلب الجاهز لـ ChatGPT 📋</button>
         <div style="border-top: 1px solid #eee; padding-top: 15px; text-align:right;">
             <h3 style="margin-bottom:10px; font-size:16px;">مراجعة الإجابات النهائية وتعديلها:</h3>
