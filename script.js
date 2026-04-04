@@ -21,7 +21,7 @@ let freeAITokens = 9999; // Unlimited for now based on user request
 
 const translations = {
     ar: {
-        summary: "النبذة التعريفية", experience: "الخبرات المهنية",
+        summary: "النبذة   التعريفية", experience: "الخبرات المهنية",
         education: "التعليم", skills: "المهارات", languages: "اللغات",
         watermark: "تم إنشاء هذه السيرة مجاناً عبر بوت @ats3cv_bot", present: "الحاضر"
     },
@@ -75,10 +75,10 @@ function nav(dir) {
         btnNext.textContent = currentStep === 10 ? "اكتملت المراجعة (التالي) 🚀" : "التالي";
         btnNext.onclick = () => nav(1);
     }
-    
+
     if (currentStep === 10 && dir === 1) buildReviewStep();
     if (currentStep === 11) preparePDFPreview(false);
-    
+
     updateProgress();
 }
 
@@ -182,7 +182,7 @@ function buildReviewStep() {
     const lang = d.lang === 'en' ? 'الإنجليزية' : 'العربية';
     const xpContext = d.cvType === 'fresh' ? 'طالب حديث التخرج أو مبتدئ' : 'صاحب خبرة مهنية';
     const job = d.personal.jobTitle || '[لم يحدد بعد]';
-    
+
     let html = ``;
     let promptRequests = [];
 
@@ -252,13 +252,43 @@ function exportCV(isPremium) {
     }
 }
 
-function mockPayment() {
+async function payWithStars() {
     closeModal('payment-modal');
-    showToast("جاري إتمام الدفع بالنجوم... ⏳");
-    setTimeout(() => {
-        showToast("⭐️ نجحت العملية! جاري تصدير سيرتك الاحترافية.");
-        generateAndSendPDF(true);
-    }, 1500);
+    showToast("جاري التحقق وتجهيز الفاتورة... ⏳");
+
+    try {
+        const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: 'سيرة ذاتية احترافية خالية من الحقوق',
+                description: 'دفع 15 نجمة لإزالة العلامة المائية ودعم التطبيق 🚀',
+                payload: 'premium_cv_' + Date.now(),
+                currency: 'XTR',
+                prices: [{ label: 'السعر', amount: 15 }]
+            })
+        });
+
+        const json = await res.json();
+
+        if (json.ok && json.result) {
+            tg.openInvoice(json.result, function (status) {
+                if (status === 'paid') {
+                    showToast("⭐️ شكراً لثقتك! نجحت العملية. جاري تصدير سيرتك الاحترافية...");
+                    generateAndSendPDF(true);
+                } else if (status === 'cancelled') {
+                    showToast("❌ تم إلغاء عملية الدفع.");
+                } else {
+                    showToast("⚠️ تعذر إتمام الدفع أو حدثت مشكلة.");
+                }
+            });
+        } else {
+            throw new Error("لم يتمكن البوت من توليد رابط الفاتورة.");
+        }
+    } catch (err) {
+        console.error(err);
+        showToast("⚠️ حدث خطأ فني أثناء تحضير الفاتورة.");
+    }
 }
 
 // --- PDF Render & Bi-Di Fix ---
