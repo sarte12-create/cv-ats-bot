@@ -1,37 +1,38 @@
-// File loaded 
+// Clean & Safe App.js Version for Production
+// By Antigravity
+// -----------------------------------------------------
 
-const _p1 = "AIzaSyDwq-";
-const _p2 = "aldfWx-Nk6u_";
-const _p3 = "hO6HPIfEG_yAE-tg8";
-const GEMINI_API_KEY = _p1 + _p2 + _p3;
-const BOT_TOKEN = "8570762354:AAFAykZXSK1fZFIELfB_ABVMljsMFcf3qI4";
+// --- Globals & Telegram ---
+let tg = null;
+try {
+    tg = window.Telegram.WebApp;
+    tg.expand();
+    tg.ready();
+    if (tg.colorScheme === 'dark') document.body.classList.add('dark-theme');
+    tg.onEvent('themeChanged', () => {
+        if (tg.colorScheme === 'dark') document.body.classList.add('dark-theme');
+        else document.body.classList.remove('dark-theme');
+    });
+} catch (e) {
+    console.warn("Not running inside Telegram WebApp or API missing");
+}
 
-// إعدادات Supabase
+// --- Setup Supabase Safely ---
 const SUPABASE_URL = "https://hcpehnoencklcpzzwdcp.supabase.co";
 const SUPABASE_KEY = "sb_publishable_P87zrDGoh_QkPen5B9bytw_vPfg8Z7o";
 let supabase = null;
-if (typeof window.supabase !== 'undefined' && SUPABASE_URL !== "YOUR_SUPABASE_URL") {
-    try {
+try {
+    if (typeof window.supabase !== 'undefined' && SUPABASE_URL !== "YOUR_SUPABASE_URL") {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    } catch (e) {
-        console.error("Supabase Init Error: ", e);
     }
+} catch (e) {
+    console.error("Supabase Client Error:", e);
 }
 
-// Telegram Web App Initialization
-const tg = window.Telegram.WebApp;
-tg.expand();
-tg.ready();
-
-if (tg.colorScheme === 'dark') document.body.classList.add('dark-theme');
-tg.onEvent('themeChanged', () => {
-    if (tg.colorScheme === 'dark') document.body.classList.add('dark-theme');
-    else document.body.classList.remove('dark-theme');
-});
-
+// --- App State ---
 let currentStep = 1;
 const totalSteps = 12;
-let freeAITokens = 9999; // Unlimited for now based on user request
+const BOT_TOKEN = "8570762354:AAFAykZXSK1fZFIELfB_ABVMljsMFcf3qI4";
 
 const translations = {
     ar: {
@@ -46,12 +47,51 @@ const translations = {
     }
 };
 
+// --- DOM Loaded Setup ---
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Restore Data safely
+    loadData();
+
+    // 2. Add defaults if empty
+    if (!document.getElementById('experiences-list').children.length) window.addExperience();
+    if (!document.getElementById('education-list').children.length) window.addEducation();
+    if (!document.getElementById('courses-list').children.length) window.addCourse();
+    if (!document.getElementById('languages-list').children.length) window.addLanguage();
+
+    // 3. Init GUI
+    updateProgress();
+
+    // Bind buttons explicitly to bypass strict CSP restrictions
+    const btnNext = document.getElementById('btn-next');
+    const btnPrev = document.getElementById('btn-prev');
+    if (btnNext) {
+        btnNext.addEventListener('click', function (e) {
+            e.preventDefault();
+            window.nav(1);
+        });
+        // Override inline onclick just in case
+        btnNext.removeAttribute('onclick');
+    }
+    if (btnPrev) {
+        btnPrev.addEventListener('click', function (e) {
+            e.preventDefault();
+            window.nav(-1);
+        });
+        btnPrev.removeAttribute('onclick');
+    }
+});
+
+// --- UI Utilities ---
 function updateProgress() {
-    document.getElementById('progress-bar').style.width = `${(currentStep / totalSteps) * 100}%`;
+    const pBar = document.getElementById('progress-bar');
+    if (pBar) {
+        pBar.style.width = `${(currentStep / totalSteps) * 100}%`;
+    }
 }
 
 function showToast(msg) {
     const c = document.getElementById('toast-container');
+    if (!c) return;
     const toast = document.createElement('div');
     toast.className = 'toast';
     toast.innerText = msg;
@@ -59,129 +99,151 @@ function showToast(msg) {
     setTimeout(() => { toast.remove(); }, 3000);
 }
 
+// --- Navigation Logic ---
+window.nav = function (dir) {
+    // Validation
+    if (dir === 1 && !validateStep(currentStep)) return;
+
+    // Reverse Sync
+    if (dir === 1 && currentStep === 11) syncReviewBack();
+
+    // Save Safely
+    try {
+        saveData();
+    } catch (e) {
+        console.error("Save Data Error", e);
+    }
+
+    // Hide Current
+    const currStepEl = document.getElementById(`step-${currentStep}`);
+    if (currStepEl) currStepEl.classList.remove('active');
+
+    // Update Index
+    currentStep += dir;
+
+    // Show Next
+    const nextStepEl = document.getElementById(`step-${currentStep}`);
+    if (nextStepEl) nextStepEl.classList.add('active');
+
+    // Render Buttons
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+
+    if (btnPrev) {
+        btnPrev.style.display = currentStep > 1 ? 'block' : 'none';
+    }
+
+    if (btnNext) {
+        if (currentStep === totalSteps) {
+            btnNext.style.display = 'none';
+        } else {
+            btnNext.style.display = 'block';
+            btnNext.textContent = currentStep === 11 ? "اكتملت المراجعة (التالي) 🚀" : "التالي";
+        }
+    }
+
+    // Triggers
+    if (currentStep === 11 && dir === 1) buildReviewStep();
+    if (currentStep === 12) preparePDFPreview(false);
+
+    updateProgress();
+};
+
 function validateStep(step) {
-    const inputs = document.getElementById(`step-${step}`).querySelectorAll('input[required]');
+    const stepEl = document.getElementById(`step-${step}`);
+    if (!stepEl) return true;
+
+    const inputs = stepEl.querySelectorAll('input[required]');
     for (let input of inputs) {
         if (!input.value.trim()) {
             showToast('يرجى تعبئة الحقول المطلوبة');
-            input.focus();
+            try { input.focus(); } catch (e) { }
             return false;
         }
     }
     return true;
 }
 
-function nav(dir) {
-    if (dir === 1 && !validateStep(currentStep)) return;
-    if (dir === 1 && currentStep === 11) syncReviewBack();
+// --- Dynamic Elements ---
+window.addExperience = function () {
+    const tpl = document.getElementById('tpl-experience');
+    if (tpl) document.getElementById('experiences-list').appendChild(tpl.content.cloneNode(true));
+};
 
-    try {
-        saveData();
-    } catch (e) {
-        console.error("SaveData error", e);
-        showToast("حدث خطأ أثناء حفظ البيانات!");
-        return;
-    }
+window.addEducation = function () {
+    const tpl = document.getElementById('tpl-education');
+    if (tpl) document.getElementById('education-list').appendChild(tpl.content.cloneNode(true));
+};
 
-    const currStepEl = document.getElementById(`step-${currentStep}`);
-    if (currStepEl) currStepEl.classList.remove('active');
+window.addCourse = function () {
+    const tpl = document.getElementById('tpl-course');
+    if (tpl) document.getElementById('courses-list').appendChild(tpl.content.cloneNode(true));
+};
 
-    currentStep += dir;
+window.addLanguage = function () {
+    const tpl = document.getElementById('tpl-language');
+    if (tpl) document.getElementById('languages-list').appendChild(tpl.content.cloneNode(true));
+};
 
-    const nextStepEl = document.getElementById(`step-${currentStep}`);
-    if (nextStepEl) nextStepEl.classList.add('active');
-
-    const btnPrev = document.getElementById('btn-prev');
-    const btnNext = document.getElementById('btn-next');
-
-    if (btnPrev) btnPrev.style.display = currentStep > 1 ? 'block' : 'none';
-
-    if (currentStep === totalSteps) {
-        if (btnNext) btnNext.style.display = 'none';
-    } else {
-        if (btnNext) {
-            btnNext.style.display = 'block';
-            btnNext.textContent = currentStep === 11 ? "اكتملت المراجعة (التالي) 🚀" : "التالي";
-        }
-    }
-
-    if (currentStep === 11 && dir === 1) buildReviewStep();
-    if (currentStep === 12) preparePDFPreview(false);
-
-    updateProgress();
-}
-
-function addExperience() {
-    document.getElementById('experiences-list').appendChild(document.getElementById('tpl-experience').content.cloneNode(true));
-}
-function addEducation() {
-    document.getElementById('education-list').appendChild(document.getElementById('tpl-education').content.cloneNode(true));
-}
-function addCourse() {
-    document.getElementById('courses-list').appendChild(document.getElementById('tpl-course').content.cloneNode(true));
-}
-function addLanguage() {
-    document.getElementById('languages-list').appendChild(document.getElementById('tpl-language').content.cloneNode(true));
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    // ربط الأزرار برمجياً لتجنب مشاكل onclick في المتصفح
-    const btnNext = document.getElementById('btn-next');
-    const btnPrev = document.getElementById('btn-prev');
-    if (btnNext) btnNext.addEventListener('click', (e) => { e.preventDefault(); nav(1); });
-    if (btnPrev) btnPrev.addEventListener('click', (e) => { e.preventDefault(); nav(-1); });
-
-    loadData();
-    if (!document.getElementById('experiences-list').children.length) addExperience();
-    if (!document.getElementById('education-list').children.length) addEducation();
-    if (!document.getElementById('courses-list').children.length) addCourse();
-    if (!document.getElementById('languages-list').children.length) addLanguage();
-    updateProgress();
-});
-
+// --- Storage Data ---
 function saveData() {
-    const getVal = (id) => document.getElementById(id).value;
+    const getVal = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value : '';
+    };
+
+    const langInput = document.querySelector('input[name="language"]:checked');
+    const typeInput = document.querySelector('input[name="cvType"]:checked');
+    const tplInput = document.querySelector('input[name="cvTemplate"]:checked');
+
     const data = {
-        lang: document.querySelector('input[name="language"]:checked')?.value || 'ar',
-        cvType: document.querySelector('input[name="cvType"]:checked')?.value || 'fresh',
-        cvTemplate: document.querySelector('input[name="cvTemplate"]:checked')?.value || 'tpl1',
+        lang: langInput ? langInput.value : 'ar',
+        cvType: typeInput ? typeInput.value : 'fresh',
+        cvTemplate: tplInput ? tplInput.value : 'tpl1',
         personal: {
-            fullName: getVal('fullName'), email: getVal('email'),
-            phone: getVal('phone'), location: getVal('location'),
-            jobTitle: getVal('jobTitle'), summary: getVal('summary')
+            fullName: getVal('fullName'),
+            email: getVal('email'),
+            phone: getVal('phone'),
+            location: getVal('location'),
+            jobTitle: getVal('jobTitle'),
+            summary: getVal('summary')
         },
         experiences: Array.from(document.querySelectorAll('#experiences-list .dynamic-item')).map(el => ({
-            title: el.querySelector('.exp-title').value,
-            company: el.querySelector('.exp-company').value,
-            start: el.querySelector('.exp-start').value,
-            end: el.querySelector('.exp-end').value,
-            desc: el.querySelector('.exp-desc').value
+            title: el.querySelector('.exp-title') ? el.querySelector('.exp-title').value : '',
+            company: el.querySelector('.exp-company') ? el.querySelector('.exp-company').value : '',
+            start: el.querySelector('.exp-start') ? el.querySelector('.exp-start').value : '',
+            end: el.querySelector('.exp-end') ? el.querySelector('.exp-end').value : '',
+            desc: el.querySelector('.exp-desc') ? el.querySelector('.exp-desc').value : ''
         })).filter(x => x.title),
         education: Array.from(document.querySelectorAll('#education-list .dynamic-item')).map(el => ({
-            degree: el.querySelector('.edu-degree').value,
-            field: el.querySelector('.edu-field').value,
-            inst: el.querySelector('.edu-inst').value,
-            year: el.querySelector('.edu-year').value
+            degree: el.querySelector('.edu-degree') ? el.querySelector('.edu-degree').value : '',
+            field: el.querySelector('.edu-field') ? el.querySelector('.edu-field').value : '',
+            inst: el.querySelector('.edu-inst') ? el.querySelector('.edu-inst').value : '',
+            year: el.querySelector('.edu-year') ? el.querySelector('.edu-year').value : ''
         })).filter(x => x.degree),
         courses: Array.from(document.querySelectorAll('#courses-list .dynamic-item')).map(el => ({
-            name: el.querySelector('.course-name').value,
-            inst: el.querySelector('.course-inst').value,
-            year: el.querySelector('.course-year').value
+            name: el.querySelector('.course-name') ? el.querySelector('.course-name').value : '',
+            inst: el.querySelector('.course-inst') ? el.querySelector('.course-inst').value : '',
+            year: el.querySelector('.course-year') ? el.querySelector('.course-year').value : ''
         })).filter(x => x.name),
         skills: getVal('skills'),
         languages: Array.from(document.querySelectorAll('#languages-list .dynamic-item')).map(el => ({
-            name: el.querySelector('.lang-name').value,
-            level: el.querySelector('.lang-level').value
+            name: el.querySelector('.lang-name') ? el.querySelector('.lang-name').value : '',
+            level: el.querySelector('.lang-level') ? el.querySelector('.lang-level').value : ''
         })).filter(x => x.name)
     };
-    localStorage.setItem('cv_bot_data', JSON.stringify(data));
+
+    try {
+        localStorage.setItem('cv_bot_data', JSON.stringify(data));
+    } catch (e) { }
+
     return data;
 }
 
 function loadData() {
-    const raw = localStorage.getItem('cv_bot_data');
-    if (!raw) return;
     try {
+        const raw = localStorage.getItem('cv_bot_data');
+        if (!raw) return;
         const data = JSON.parse(raw);
         if (data.lang) {
             const el = document.querySelector(`input[name="language"][value="${data.lang}"]`);
@@ -195,50 +257,67 @@ function loadData() {
             const el = document.querySelector(`input[name="cvTemplate"][value="${data.cvTemplate}"]`);
             if (el) el.checked = true;
         }
-        document.getElementById('fullName').value = data.personal?.fullName || '';
-        document.getElementById('email').value = data.personal?.email || '';
-        document.getElementById('phone').value = data.personal?.phone || '';
-        document.getElementById('location').value = data.personal?.location || '';
-        document.getElementById('jobTitle').value = data.personal?.jobTitle || '';
-        document.getElementById('summary').value = data.personal?.summary || '';
-        document.getElementById('skills').value = data.skills || '';
-        // Load arrays...
+
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el && val) el.value = val;
+        };
+
+        setVal('fullName', data.personal?.fullName);
+        setVal('email', data.personal?.email);
+        setVal('phone', data.personal?.phone);
+        setVal('location', data.personal?.location);
+        setVal('jobTitle', data.personal?.jobTitle);
+        setVal('summary', data.personal?.summary);
+        setVal('skills', data.skills);
+
         if (data.experiences) data.experiences.forEach(e => {
-            addExperience();
+            window.addExperience();
             const last = document.getElementById('experiences-list').lastElementChild;
-            last.querySelector('.exp-title').value = e.title;
-            last.querySelector('.exp-company').value = e.company;
-            last.querySelector('.exp-start').value = e.start;
-            last.querySelector('.exp-end').value = e.end;
-            last.querySelector('.exp-desc').value = e.desc;
+            if (last) {
+                last.querySelector('.exp-title').value = e.title || '';
+                last.querySelector('.exp-company').value = e.company || '';
+                last.querySelector('.exp-start').value = e.start || '';
+                last.querySelector('.exp-end').value = e.end || '';
+                last.querySelector('.exp-desc').value = e.desc || '';
+            }
         });
         if (data.education) data.education.forEach(e => {
-            addEducation();
+            window.addEducation();
             const last = document.getElementById('education-list').lastElementChild;
-            last.querySelector('.edu-degree').value = e.degree;
-            last.querySelector('.edu-field').value = e.field;
-            last.querySelector('.edu-inst').value = e.inst;
-            last.querySelector('.edu-year').value = e.year;
+            if (last) {
+                last.querySelector('.edu-degree').value = e.degree || '';
+                last.querySelector('.edu-field').value = e.field || '';
+                last.querySelector('.edu-inst').value = e.inst || '';
+                last.querySelector('.edu-year').value = e.year || '';
+            }
         });
         if (data.languages) data.languages.forEach(e => {
-            addLanguage();
+            window.addLanguage();
             const last = document.getElementById('languages-list').lastElementChild;
-            last.querySelector('.lang-name').value = e.name;
-            last.querySelector('.lang-level').value = e.level;
+            if (last) {
+                last.querySelector('.lang-name').value = e.name || '';
+                last.querySelector('.lang-level').value = e.level || '';
+            }
         });
         if (data.courses) data.courses.forEach(e => {
-            addCourse();
+            window.addCourse();
             const last = document.getElementById('courses-list').lastElementChild;
-            last.querySelector('.course-name').value = e.name;
-            last.querySelector('.course-inst').value = e.inst;
-            last.querySelector('.course-year').value = e.year;
+            if (last) {
+                last.querySelector('.course-name').value = e.name || '';
+                last.querySelector('.course-inst').value = e.inst || '';
+                last.querySelector('.course-year').value = e.year || '';
+            }
         });
     } catch (e) { }
 }
 
+// --- AI Review System ---
 function buildReviewStep() {
     const d = saveData();
     const reviewDiv = document.getElementById('review-content');
+    if (!reviewDiv) return;
+
     const lang = d.lang === 'en' ? 'الإنجليزية' : 'العربية';
     const xpContext = d.cvType === 'fresh' ? 'طالب حديث التخرج أو مبتدئ' : 'صاحب خبرة مهنية';
     const job = d.personal.jobTitle || '[لم يحدد بعد]';
@@ -246,24 +325,21 @@ function buildReviewStep() {
     let html = ``;
     let promptRequests = [];
 
-    // 1. Summary (Always present)
     promptRequests.push("1. صياغة نبذة تعريفية (Summary) قوية واحترافية متوافقة مع أنظمة الـ ATS في 3 أسطر.");
-    html += `<div class="form-group"><label style="color:var(--primary-color);">النبذة المقترحة</label><textarea id="review-summary" rows="3" placeholder="ضع إجابة شات جي بي تي هنا...">${document.getElementById('summary').value}</textarea></div>`;
+    html += `<div class="form-group"><label style="color:var(--primary-color);">النبذة المقترحة</label><textarea id="review-summary" rows="3" placeholder="ضع إجابة شات جي بي تي هنا...">${document.getElementById('summary')?.value || ''}</textarea></div>`;
 
-    // 2. Experiences
     const exps = document.querySelectorAll('#experiences-list .dynamic-item');
     if (exps.length > 0) {
         exps.forEach((ex, i) => {
-            const desc = ex.querySelector('.exp-desc').value.trim();
-            const title = ex.querySelector('.exp-title').value.trim() || 'وظيفة سابقة';
+            const desc = ex.querySelector('.exp-desc')?.value.trim() || '';
+            const title = ex.querySelector('.exp-title')?.value.trim() || 'وظيفة سابقة';
             promptRequests.push(`- صياغة إنجازات وتأثير احترافي بصيغة (Bullet points ATS) لخبرتي كـ "${title}".\nالمهام الأصلية: ${desc || '[بدون مهام]'} \n`);
             html += `<div class="form-group"><label style="color:var(--primary-color);">تطوير مهام (${title})</label><textarea id="review-exp-${i}" rows="3" placeholder="ضع الإجابة هنا...">${desc}</textarea></div>`;
         });
     }
 
-    // 3. Skills (Always present)
     promptRequests.push("2. اقتراح واعتماد 10 مهارات قوية تقنية وشخصية (مفصولة بفواصل المفردات فقط).");
-    html += `<div class="form-group"><label style="color:var(--primary-color);">المهارات المقترحة</label><textarea id="review-skills" rows="3" placeholder="ضع الإجابة هنا...">${document.getElementById('skills').value}</textarea></div>`;
+    html += `<div class="form-group"><label style="color:var(--primary-color);">المهارات المقترحة</label><textarea id="review-skills" rows="3" placeholder="ضع الإجابة هنا...">${document.getElementById('skills')?.value || ''}</textarea></div>`;
 
     let p = `أنا أقوم بإنشاء سيرة ذاتية احترافية.\nالمسمى الوظيفي: ${job} (${xpContext}).\nاللغة المطلوبة: ${lang}.\nأحتاج منك مساعدتي في إكمال النواقص أو تطوير المكتوب بصيغة احترافية ومباشرة بدون أي مقدمات ترحيبية:\n\n` + promptRequests.join('\n');
 
@@ -281,95 +357,40 @@ function buildReviewStep() {
     `;
 }
 
-function copyReviewPrompt() {
+window.copyReviewPrompt = function () {
     const el = document.getElementById('review-prompt');
+    if (!el) return;
     el.select();
-    document.execCommand('copy');
-    showToast("✅ تم النسخ بنجاح! الصقه في الذكاء الاصطناعي الخاص بك.");
-}
+    try {
+        document.execCommand('copy');
+        showToast("✅ تم النسخ بنجاح! الصقه في الذكاء الاصطناعي الخاص بك.");
+    } catch (e) { }
+};
 
 function syncReviewBack() {
     const rs = document.getElementById('review-summary');
-    if (rs && rs.value.trim()) document.getElementById('summary').value = rs.value.trim();
+    if (rs && rs.value.trim()) {
+        const sumEl = document.getElementById('summary');
+        if (sumEl) sumEl.value = rs.value.trim();
+    }
 
     const sk = document.getElementById('review-skills');
-    if (sk && sk.value.trim()) document.getElementById('skills').value = sk.value.trim();
+    if (sk && sk.value.trim()) {
+        const skillsEl = document.getElementById('skills');
+        if (skillsEl) skillsEl.value = sk.value.trim();
+    }
 
     const exps = document.querySelectorAll('#experiences-list .dynamic-item');
     exps.forEach((ex, i) => {
         const re = document.getElementById(`review-exp-${i}`);
         if (re && re.value.trim()) {
-            ex.querySelector('.exp-desc').value = re.value.trim();
+            const dest = ex.querySelector('.exp-desc');
+            if (dest) dest.value = re.value.trim();
         }
     });
 }
 
-function exportCV(isPremium) {
-    if (isPremium) {
-        document.getElementById('payment-modal').classList.add('active');
-    } else {
-        generateAndSendPDF(false);
-    }
-}
-
-async function payWithStars() {
-    const btn = document.querySelector('#payment-modal .btn-primary');
-    const originalText = btn.innerHTML;
-    btn.innerHTML = 'جاري التجهيز... ⏳';
-    btn.style.opacity = '0.7';
-    btn.disabled = true;
-
-    try {
-        const prices = encodeURIComponent(JSON.stringify([{ label: 'السعر', amount: 15 }]));
-        const url = `https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink?title=${encodeURIComponent('سيرة ذاتية احترافية بدون حقوق')}&description=${encodeURIComponent('دعم 15 نجمة')}&payload=premium_${Date.now()}&currency=XTR&prices=${prices}`;
-
-        const res = await fetch(url);
-        const json = await res.json();
-
-        if (json.ok && json.result) {
-            closeModal('payment-modal');
-            const statusBox = document.getElementById('export-status');
-            statusBox.style.display = "block";
-            statusBox.innerHTML = `
-                <p style="color:var(--primary-color); font-weight:bold; margin-bottom:10px;">تم تجهيز الفاتورة بنجاح ✅</p>
-                <a href="${json.result}" target="_blank" class="btn btn-primary" style="display:block; text-decoration:none; margin-bottom:10px;">انقر هنا للدفع (إذا لم تفتح الشاشة) ⭐️</a>
-                <p style="font-size:12px; margin-bottom:10px; color:var(--hint-color);">بعد إتمام الدفع بنجاح، اضغط على الزر بالأسفل:</p>
-                <button class="btn btn-secondary" onclick="generateAndSendPDF(true)">📥 تصدير السيرة الاحترافية الآن</button>
-            `;
-
-            try {
-                if (tg.openInvoice) {
-                    tg.openInvoice(json.result, function (status) {
-                        if (status === 'paid') {
-                            showToast("⭐️ شكراً لثقتك! نجحت العملية. جاري تصدير سيرتك الاحترافية...");
-                            statusBox.innerHTML = "<p style='color:green;font-weight:bold;'>✅ تم الدفع بنجاح، جاري التحميل...</p>";
-                            generateAndSendPDF(true);
-                        } else if (status === 'cancelled') {
-                            showToast("❌ تم إلغاء عملية الدفع.");
-                        } else {
-                            showToast("⚠️ تعذر إتمام الدفع أو حدثت مشكلة.");
-                        }
-                    });
-                } else {
-                    tg.openTelegramLink(json.result);
-                }
-            } catch (openErr) {
-                tg.openTelegramLink(json.result);
-            }
-        } else {
-            throw new Error(json.description || "فشل توليد الفاتورة.");
-        }
-    } catch (err) {
-        alert("عذراً، لم نتمكن من الاتصال بسيرفر تليجرام بسبب إعدادات الشبكة. الكود: " + err.message);
-        console.error(err);
-    } finally {
-        btn.innerHTML = originalText;
-        btn.style.opacity = '1';
-        btn.disabled = false;
-    }
-}
-
-// --- PDF Render & Bi-Di Fix ---
+// --- PDF Render & Export Logic ---
 function parseBiDiText(text) {
     if (!text) return "";
     return text.split('\n').filter(l => l.trim()).map(line => `<div dir="auto">${line}</div>`).join('');
@@ -384,16 +405,18 @@ function parseBiDiList(text) {
 function preparePDFPreview(isPremium = false) {
     const d = saveData();
     const c = document.getElementById('pdf-container');
+    if (!c) return;
+
     const mainLang = d.lang === 'en' ? 'en' : 'ar';
     const dict = translations[mainLang];
 
     document.getElementById('pdf-wrapper').setAttribute('dir', mainLang === 'en' ? 'ltr' : 'rtl');
-    document.getElementById('pdf-container').className = d.cvTemplate || 'tpl1';
+    c.className = d.cvTemplate || 'tpl1';
 
     let html = `
         <div class="pdf-header">
-            <div class="pdf-name" dir="auto">${d.personal.fullName}</div>
-            <div class="pdf-jobtitle" dir="auto">${d.personal.jobTitle}</div>
+            <div class="pdf-name" dir="auto">${d.personal.fullName || ''}</div>
+            <div class="pdf-jobtitle" dir="auto">${d.personal.jobTitle || ''}</div>
             <div class="pdf-contact" dir="auto">
                 ${d.personal.email ? `<span>${d.personal.email}</span>` : ''}
                 ${d.personal.phone ? `${d.personal.email ? '<span>|</span>' : ''}<span>${d.personal.phone}</span>` : ''}
@@ -461,33 +484,45 @@ function preparePDFPreview(isPremium = false) {
     c.innerHTML = html;
 }
 
-async function generateAndSendPDF(isPremium) {
+window.generateAndSendPDF = async function (isPremium = false) {
     const statusBox = document.getElementById('export-status');
-    statusBox.style.display = "block";
-    statusBox.innerText = "يتم الآن تجهيز وتصدير ملف PDF... ⏳";
+    if (statusBox) {
+        statusBox.style.display = "block";
+        statusBox.innerText = "يتم الآن تجهيز وتصدير ملف PDF... ⏳";
+    }
 
-    // تسجيل الإحصائيات في قاعدة البيانات (Supabase)
     if (supabase) {
         try {
-            const user = tg.initDataUnsafe?.user;
+            const user = tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
+            const langInput = document.querySelector('input[name="language"]:checked');
+            const cvTypeInput = document.querySelector('input[name="cvType"]:checked');
+
             await supabase.from('bot_usage').insert([{
                 telegram_id: user?.id || null,
                 first_name: user?.first_name || 'Unknown',
                 username: user?.username || 'Unknown',
-                language_chosen: document.querySelector('input[name="language"]:checked')?.value || 'ar',
-                cv_type: document.querySelector('input[name="cvType"]:checked')?.value || 'fresh'
+                language_chosen: langInput?.value || 'ar',
+                cv_type: cvTypeInput?.value || 'fresh'
             }]);
         } catch (e) {
-            console.error("Supabase Error: ", e);
+            console.error("Supabase Analytics Error: ", e);
         }
     }
 
     preparePDFPreview(isPremium);
 
     const element = document.getElementById('pdf-container');
+    const filenameVal = document.getElementById('fullName')?.value || 'CV';
+
+    // Check if html2pdf is loaded
+    if (typeof html2pdf === 'undefined') {
+        if (statusBox) statusBox.innerText = "❌ خطأ: لم يتم تحميل مكتبة PDF. يرجى تحديث الصفحة والمحاولة.";
+        return;
+    }
+
     const opt = {
         margin: 0,
-        filename: `${document.getElementById('fullName').value || 'CV'}.pdf`,
+        filename: `${filenameVal}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -497,10 +532,9 @@ async function generateAndSendPDF(isPremium) {
         const worker = html2pdf().set(opt).from(element);
         const pdfBlob = await worker.outputPdf('blob');
 
-        if (BOT_TOKEN !== "YOUR_BOT_TOKEN_HERE") {
-            document.getElementById('export-status').innerText = "يتم الإرسال... 🚀";
-            const chatId = tg.initDataUnsafe?.user?.id;
-            if (!chatId) throw new Error("لا يمكن الوصول لمعرف المحادثة. (التطبيق لا يعمل كبوت حالياً)");
+        if (BOT_TOKEN !== "YOUR_BOT_TOKEN_HERE" && tg && tg.initDataUnsafe?.user?.id) {
+            if (statusBox) statusBox.innerText = "يتم الإرسال لـ Telegram... 🚀";
+            const chatId = tg.initDataUnsafe.user.id;
 
             const fd = new FormData();
             fd.append("chat_id", chatId);
@@ -508,14 +542,20 @@ async function generateAndSendPDF(isPremium) {
             fd.append("caption", "سيرتك الذاتية متوافقة مع الـ ATS جاهزة! 🌟\nتم الإنشاء بواسطة @ats3cv_bot");
 
             const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd });
-            if (r.ok) tg.showAlert("تم الإرسال 🚀", () => tg.close());
-            else throw new Error("فشل الرفع من تليجرام");
+            if (r.ok) {
+                if (tg.showAlert) tg.showAlert("تم الإرسال بنجاح 🚀", () => typeof tg.close === 'function' && tg.close());
+                if (statusBox) statusBox.innerText = "✅ تم الإرسال لمحادتك على Telegram بنجاح.";
+            } else {
+                throw new Error("فشل الرفع من تليجرام");
+            }
         } else {
-            document.getElementById('export-status').innerText = "جاري التحميل محلياً (وضع المطور) 💾";
+            if (statusBox) statusBox.innerText = "جاري التحميل محلياً (وضع المطور) 💾";
             await worker.save();
             showToast("تم التحميل بنجاح!");
+            if (statusBox) statusBox.innerText = "✅ تم التحميل محلياً.";
         }
     } catch (err) {
-        document.getElementById('export-status').innerText = "❌ خطأ: " + err.message;
+        if (statusBox) statusBox.innerText = "❌ خطأ: " + err.message;
+        console.error(err);
     }
-}
+};
