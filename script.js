@@ -1,3 +1,11 @@
+window.onerror = function (msg, url, line) {
+    if (typeof tg !== 'undefined' && tg.showAlert) {
+        tg.showAlert("حدث خطأ تقني: " + msg + " في سطر " + line);
+    } else {
+        alert("حدث خطأ تقني: " + msg + " في سطر " + line);
+    }
+};
+
 const _p1 = "AIzaSyDwq-";
 const _p2 = "aldfWx-Nk6u_";
 const _p3 = "hO6HPIfEG_yAE-tg8";
