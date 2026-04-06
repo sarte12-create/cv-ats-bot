@@ -80,17 +80,18 @@ function validateStep(step) {
 }
 
 function nav(dir) {
-    // Alert للتأكد من وصول النقرة وأن الأكواد الجديدة تعمل
-    if (currentStep === 1) {
-        // Just checking execution initially silently or visually if needed
-        // alert("تم النقر على التالي، جاري المعالجة.."); 
+    alert("بداية كود الزر: " + currentStep);
+
+    if (dir === 1 && !validateStep(currentStep)) {
+        alert("فشل التحقق!");
+        return;
     }
 
-    if (dir === 1 && !validateStep(currentStep)) return;
     if (dir === 1 && currentStep === 11) syncReviewBack();
 
     try {
         saveData();
+        alert("تم الحفظ بنجاح!");
     } catch (e) {
         alert("خطأ أثناء الحفظ: " + e.message);
         return;
@@ -102,7 +103,12 @@ function nav(dir) {
     currentStep += dir;
 
     const nextStepEl = document.getElementById(`step-${currentStep}`);
-    if (nextStepEl) nextStepEl.classList.add('active');
+    if (nextStepEl) {
+        nextStepEl.classList.add('active');
+        alert("تم الانتقال بنجاح إلى: " + currentStep);
+    } else {
+        alert("خطأ: لم يتم العثور على الصفحة رقم " + currentStep);
+    }
 
     document.getElementById('btn-prev').style.display = currentStep > 1 ? 'block' : 'none';
     const btnNext = document.getElementById('btn-next');
@@ -112,7 +118,6 @@ function nav(dir) {
     } else {
         btnNext.style.display = 'block';
         btnNext.textContent = currentStep === 11 ? "اكتملت المراجعة (التالي) 🚀" : "التالي";
-        btnNext.onclick = () => nav(1);
     }
 
     if (currentStep === 11 && dir === 1) buildReviewStep();
