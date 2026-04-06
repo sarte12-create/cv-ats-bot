@@ -1,0 +1,484 @@
+const _p1 = "AIzaSyDwq-";
+const _p2 = "aldfWx-Nk6u_";
+const _p3 = "hO6HPIfEG_yAE-tg8";
+const GEMINI_API_KEY = _p1 + _p2 + _p3;
+const BOT_TOKEN = "8570762354:AAFAykZXSK1fZFIELfB_ABVMljsMFcf3qI4";
+
+// Telegram Web App Initialization
+const tg = window.Telegram.WebApp;
+tg.expand();
+tg.ready();
+
+if (tg.colorScheme === 'dark') document.body.classList.add('dark-theme');
+tg.onEvent('themeChanged', () => {
+    if (tg.colorScheme === 'dark') document.body.classList.add('dark-theme');
+    else document.body.classList.remove('dark-theme');
+});
+
+let currentStep = 1;
+const totalSteps = 12;
+let freeAITokens = 9999; // Unlimited for now based on user request
+
+const translations = {
+    ar: {
+        summary: "النبذة التعريفية", experience: "الخبرات المهنية",
+        education: "التعليم", courses: "الدورات والشهادات التدريبية", skills: "المهارات", languages: "اللغات",
+        watermark: "تم إنشاء هذه السيرة مجاناً عبر بوت @ats3cv_bot", present: "الحاضر"
+    },
+    en: {
+        summary: "Professional Summary", experience: "Work Experience",
+        education: "Education", courses: "Training & Certifications", skills: "Skills", languages: "Languages",
+        watermark: "Created for free via @ats3cv_bot", present: "Present"
+    }
+};
+
+function updateProgress() {
+    document.getElementById('progress-bar').style.width = `${(currentStep / totalSteps) * 100}%`;
+}
+
+function showToast(msg) {
+    const c = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerText = msg;
+    c.appendChild(toast);
+    setTimeout(() => { toast.remove(); }, 3000);
+}
+
+function validateStep(step) {
+    const inputs = document.getElementById(`step-${step}`).querySelectorAll('input[required]');
+    for (let input of inputs) {
+        if (!input.value.trim()) {
+            showToast('يرجى تعبئة الحقول المطلوبة');
+            input.focus();
+            return false;
+        }
+    }
+    return true;
+}
+
+function nav(dir) {
+    if (dir === 1 && !validateStep(currentStep)) return;
+    if (dir === 1 && currentStep === 11) syncReviewBack();
+    saveData();
+    document.getElementById(`step-${currentStep}`).classList.remove('active');
+    currentStep += dir;
+    document.getElementById(`step-${currentStep}`).classList.add('active');
+
+    document.getElementById('btn-prev').style.display = currentStep > 1 ? 'block' : 'none';
+    const btnNext = document.getElementById('btn-next');
+
+    if (currentStep === totalSteps) {
+        btnNext.style.display = 'none';
+    } else {
+        btnNext.style.display = 'block';
+        btnNext.textContent = currentStep === 11 ? "اكتملت المراجعة (التالي) 🚀" : "التالي";
+        btnNext.onclick = () => nav(1);
+    }
+
+    if (currentStep === 11 && dir === 1) buildReviewStep();
+    if (currentStep === 12) preparePDFPreview(false);
+
+    updateProgress();
+}
+
+function addExperience() {
+    document.getElementById('experiences-list').appendChild(document.getElementById('tpl-experience').content.cloneNode(true));
+}
+function addEducation() {
+    document.getElementById('education-list').appendChild(document.getElementById('tpl-education').content.cloneNode(true));
+}
+function addCourse() {
+    document.getElementById('courses-list').appendChild(document.getElementById('tpl-course').content.cloneNode(true));
+}
+function addLanguage() {
+    document.getElementById('languages-list').appendChild(document.getElementById('tpl-language').content.cloneNode(true));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadData();
+    if (!document.getElementById('experiences-list').children.length) addExperience();
+    if (!document.getElementById('education-list').children.length) addEducation();
+    if (!document.getElementById('courses-list').children.length) addCourse();
+    if (!document.getElementById('languages-list').children.length) addLanguage();
+    updateProgress();
+});
+
+function saveData() {
+    const getVal = (id) => document.getElementById(id).value;
+    const data = {
+        lang: document.querySelector('input[name="language"]:checked')?.value || 'ar',
+        cvType: document.querySelector('input[name="cvType"]:checked')?.value || 'fresh',
+        cvTemplate: document.querySelector('input[name="cvTemplate"]:checked')?.value || 'tpl1',
+        personal: {
+            fullName: getVal('fullName'), email: getVal('email'),
+            phone: getVal('phone'), location: getVal('location'),
+            jobTitle: getVal('jobTitle'), summary: getVal('summary')
+        },
+        experiences: Array.from(document.querySelectorAll('#experiences-list .dynamic-item')).map(el => ({
+            title: el.querySelector('.exp-title').value,
+            company: el.querySelector('.exp-company').value,
+            start: el.querySelector('.exp-start').value,
+            end: el.querySelector('.exp-end').value,
+            desc: el.querySelector('.exp-desc').value
+        })).filter(x => x.title),
+        education: Array.from(document.querySelectorAll('#education-list .dynamic-item')).map(el => ({
+            degree: el.querySelector('.edu-degree').value,
+            field: el.querySelector('.edu-field').value,
+            inst: el.querySelector('.edu-inst').value,
+            year: el.querySelector('.edu-year').value
+        })).filter(x => x.degree),
+        courses: Array.from(document.querySelectorAll('#courses-list .dynamic-item')).map(el => ({
+            name: el.querySelector('.course-name').value,
+            inst: el.querySelector('.course-inst').value,
+            year: el.querySelector('.course-year').value
+        })).filter(x => x.name),
+        skills: getVal('skills'),
+        languages: Array.from(document.querySelectorAll('#languages-list .dynamic-item')).map(el => ({
+            name: el.querySelector('.lang-name').value,
+            level: el.querySelector('.lang-level').value
+        })).filter(x => x.name)
+    };
+    localStorage.setItem('cv_bot_data', JSON.stringify(data));
+    return data;
+}
+
+function loadData() {
+    const raw = localStorage.getItem('cv_bot_data');
+    if (!raw) return;
+    try {
+        const data = JSON.parse(raw);
+        if (data.lang) document.querySelector(`input[name="language"][value="${data.lang}"]`).checked = true;
+        if (data.cvType) document.querySelector(`input[name="cvType"][value="${data.cvType}"]`).checked = true;
+        if (data.cvTemplate) document.querySelector(`input[name="cvTemplate"][value="${data.cvTemplate}"]`).checked = true;
+        document.getElementById('fullName').value = data.personal?.fullName || '';
+        document.getElementById('email').value = data.personal?.email || '';
+        document.getElementById('phone').value = data.personal?.phone || '';
+        document.getElementById('location').value = data.personal?.location || '';
+        document.getElementById('jobTitle').value = data.personal?.jobTitle || '';
+        document.getElementById('summary').value = data.personal?.summary || '';
+        document.getElementById('skills').value = data.skills || '';
+        // Load arrays...
+        if (data.experiences) data.experiences.forEach(e => {
+            addExperience();
+            const last = document.getElementById('experiences-list').lastElementChild;
+            last.querySelector('.exp-title').value = e.title;
+            last.querySelector('.exp-company').value = e.company;
+            last.querySelector('.exp-start').value = e.start;
+            last.querySelector('.exp-end').value = e.end;
+            last.querySelector('.exp-desc').value = e.desc;
+        });
+        if (data.education) data.education.forEach(e => {
+            addEducation();
+            const last = document.getElementById('education-list').lastElementChild;
+            last.querySelector('.edu-degree').value = e.degree;
+            last.querySelector('.edu-field').value = e.field;
+            last.querySelector('.edu-inst').value = e.inst;
+            last.querySelector('.edu-year').value = e.year;
+        });
+        if (data.languages) data.languages.forEach(e => {
+            addLanguage();
+            const last = document.getElementById('languages-list').lastElementChild;
+            last.querySelector('.lang-name').value = e.name;
+            last.querySelector('.lang-level').value = e.level;
+        });
+        if (data.courses) data.courses.forEach(e => {
+            addCourse();
+            const last = document.getElementById('courses-list').lastElementChild;
+            last.querySelector('.course-name').value = e.name;
+            last.querySelector('.course-inst').value = e.inst;
+            last.querySelector('.course-year').value = e.year;
+        });
+    } catch (e) { }
+}
+
+function buildReviewStep() {
+    const d = saveData();
+    const reviewDiv = document.getElementById('review-content');
+    const lang = d.lang === 'en' ? 'الإنجليزية' : 'العربية';
+    const xpContext = d.cvType === 'fresh' ? 'طالب حديث التخرج أو مبتدئ' : 'صاحب خبرة مهنية';
+    const job = d.personal.jobTitle || '[لم يحدد بعد]';
+
+    let html = ``;
+    let promptRequests = [];
+
+    // 1. Summary (Always present)
+    promptRequests.push("1. صياغة نبذة تعريفية (Summary) قوية واحترافية متوافقة مع أنظمة الـ ATS في 3 أسطر.");
+    html += `<div class="form-group"><label style="color:var(--primary-color);">النبذة المقترحة</label><textarea id="review-summary" rows="3" placeholder="ضع إجابة شات جي بي تي هنا...">${document.getElementById('summary').value}</textarea></div>`;
+
+    // 2. Experiences
+    const exps = document.querySelectorAll('#experiences-list .dynamic-item');
+    if (exps.length > 0) {
+        exps.forEach((ex, i) => {
+            const desc = ex.querySelector('.exp-desc').value.trim();
+            const title = ex.querySelector('.exp-title').value.trim() || 'وظيفة سابقة';
+            promptRequests.push(`- صياغة إنجازات وتأثير احترافي بصيغة (Bullet points ATS) لخبرتي كـ "${title}".\nالمهام الأصلية: ${desc || '[بدون مهام]'} \n`);
+            html += `<div class="form-group"><label style="color:var(--primary-color);">تطوير مهام (${title})</label><textarea id="review-exp-${i}" rows="3" placeholder="ضع الإجابة هنا...">${desc}</textarea></div>`;
+        });
+    }
+
+    // 3. Skills (Always present)
+    promptRequests.push("2. اقتراح واعتماد 10 مهارات قوية تقنية وشخصية (مفصولة بفواصل المفردات فقط).");
+    html += `<div class="form-group"><label style="color:var(--primary-color);">المهارات المقترحة</label><textarea id="review-skills" rows="3" placeholder="ضع الإجابة هنا...">${document.getElementById('skills').value}</textarea></div>`;
+
+    let p = `أنا أقوم بإنشاء سيرة ذاتية احترافية.\nالمسمى الوظيفي: ${job} (${xpContext}).\nاللغة المطلوبة: ${lang}.\nأحتاج منك مساعدتي في إكمال النواقص أو تطوير المكتوب بصيغة احترافية ومباشرة بدون أي مقدمات ترحيبية:\n\n` + promptRequests.join('\n');
+
+    reviewDiv.innerHTML = `
+        <div class="status-box" style="margin-bottom: 15px; font-size:13px;">
+            <p style="margin-bottom:5px;"><strong>جاهز للمسة السحرية؟ 🪄</strong> هذه أداة المراجعة الذكية للذكاء الاصطناعي. يمكنك استخدامها لإكمال الفراغات أو <strong>تطوير</strong> ما كتبته مسبقاً لجعله أقوى.</p>
+            <p>لقد صممنا طلب (Prompt) شامل يحتوي على خبراتك. انسخه لـ ChatGPT وثم قم بلصق الإجابة المنقحة في المربعات بالأسفل لدمجها فوراً.</p>
+        </div>
+        <textarea id="review-prompt" rows="6" readonly style="width:100%; border-radius:10px; margin-bottom: 15px; padding:10px; font-size:12px; font-family:var(--font-arabic); direction:rtl; background:var(--bg-color); color:var(--text-color); border:1px dashed var(--primary-color);">${p}</textarea>
+        <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="copyReviewPrompt()">✨ نسخ الطلب الجاهز لـ ChatGPT 📋</button>
+        <div style="border-top: 1px solid #eee; padding-top: 15px; text-align:right;">
+            <h3 style="margin-bottom:10px; font-size:16px;">مراجعة الإجابات النهائية وتعديلها:</h3>
+            ${html}
+        </div>
+    `;
+}
+
+function copyReviewPrompt() {
+    const el = document.getElementById('review-prompt');
+    el.select();
+    document.execCommand('copy');
+    showToast("✅ تم النسخ بنجاح! الصقه في الذكاء الاصطناعي الخاص بك.");
+}
+
+function syncReviewBack() {
+    const rs = document.getElementById('review-summary');
+    if (rs && rs.value.trim()) document.getElementById('summary').value = rs.value.trim();
+
+    const sk = document.getElementById('review-skills');
+    if (sk && sk.value.trim()) document.getElementById('skills').value = sk.value.trim();
+
+    const exps = document.querySelectorAll('#experiences-list .dynamic-item');
+    exps.forEach((ex, i) => {
+        const re = document.getElementById(`review-exp-${i}`);
+        if (re && re.value.trim()) {
+            ex.querySelector('.exp-desc').value = re.value.trim();
+        }
+    });
+}
+
+function exportCV(isPremium) {
+    if (isPremium) {
+        document.getElementById('payment-modal').classList.add('active');
+    } else {
+        generateAndSendPDF(false);
+    }
+}
+
+async function payWithStars() {
+    const btn = document.querySelector('#payment-modal .btn-primary');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'جاري التجهيز... ⏳';
+    btn.style.opacity = '0.7';
+    btn.disabled = true;
+
+    try {
+        const prices = encodeURIComponent(JSON.stringify([{ label: 'السعر', amount: 15 }]));
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink?title=${encodeURIComponent('سيرة ذاتية احترافية بدون حقوق')}&description=${encodeURIComponent('دعم 15 نجمة')}&payload=premium_${Date.now()}&currency=XTR&prices=${prices}`;
+
+        const res = await fetch(url);
+        const json = await res.json();
+
+        if (json.ok && json.result) {
+            closeModal('payment-modal');
+            const statusBox = document.getElementById('export-status');
+            statusBox.style.display = "block";
+            statusBox.innerHTML = `
+                <p style="color:var(--primary-color); font-weight:bold; margin-bottom:10px;">تم تجهيز الفاتورة بنجاح ✅</p>
+                <a href="${json.result}" target="_blank" class="btn btn-primary" style="display:block; text-decoration:none; margin-bottom:10px;">انقر هنا للدفع (إذا لم تفتح الشاشة) ⭐️</a>
+                <p style="font-size:12px; margin-bottom:10px; color:var(--hint-color);">بعد إتمام الدفع بنجاح، اضغط على الزر بالأسفل:</p>
+                <button class="btn btn-secondary" onclick="generateAndSendPDF(true)">📥 تصدير السيرة الاحترافية الآن</button>
+            `;
+
+            try {
+                if (tg.openInvoice) {
+                    tg.openInvoice(json.result, function (status) {
+                        if (status === 'paid') {
+                            showToast("⭐️ شكراً لثقتك! نجحت العملية. جاري تصدير سيرتك الاحترافية...");
+                            statusBox.innerHTML = "<p style='color:green;font-weight:bold;'>✅ تم الدفع بنجاح، جاري التحميل...</p>";
+                            generateAndSendPDF(true);
+                        } else if (status === 'cancelled') {
+                            showToast("❌ تم إلغاء عملية الدفع.");
+                        } else {
+                            showToast("⚠️ تعذر إتمام الدفع أو حدثت مشكلة.");
+                        }
+                    });
+                } else {
+                    tg.openTelegramLink(json.result);
+                }
+            } catch (openErr) {
+                tg.openTelegramLink(json.result);
+            }
+        } else {
+            throw new Error(json.description || "فشل توليد الفاتورة.");
+        }
+    } catch (err) {
+        alert("عذراً، لم نتمكن من الاتصال بسيرفر تليجرام بسبب إعدادات الشبكة. الكود: " + err.message);
+        console.error(err);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.style.opacity = '1';
+        btn.disabled = false;
+    }
+}
+
+// --- PDF Render & Bi-Di Fix ---
+function parseBiDiText(text) {
+    if (!text) return "";
+    return text.split('\n').filter(l => l.trim()).map(line => `<div dir="auto">${line}</div>`).join('');
+}
+function parseBiDiList(text) {
+    if (!text) return "";
+    const items = text.split('\n').filter(l => l.trim().replace(/^-/, ''));
+    if (!items.length) return "";
+    return `<ul dir="auto">` + items.map(i => `<li dir="auto">${i}</li>`).join('') + `</ul>`;
+}
+
+function preparePDFPreview(isPremium = false) {
+    const d = saveData();
+    const c = document.getElementById('pdf-container');
+    const mainLang = d.lang === 'en' ? 'en' : 'ar';
+    const dict = translations[mainLang];
+
+    document.getElementById('pdf-wrapper').setAttribute('dir', mainLang === 'en' ? 'ltr' : 'rtl');
+    document.getElementById('pdf-container').className = d.cvTemplate || 'tpl1';
+
+    let html = `
+        <div class="pdf-header">
+            <div class="pdf-name" dir="auto">${d.personal.fullName}</div>
+            <div class="pdf-jobtitle" dir="auto">${d.personal.jobTitle}</div>
+            <div class="pdf-contact" dir="auto">
+                ${d.personal.email ? `<span>${d.personal.email}</span>` : ''}
+                ${d.personal.phone ? `${d.personal.email ? '<span>|</span>' : ''}<span>${d.personal.phone}</span>` : ''}
+                ${d.personal.location ? `${d.personal.email || d.personal.phone ? '<span>|</span>' : ''}<span>${d.personal.location}</span>` : ''}
+            </div>
+        </div>
+    `;
+
+    if (d.personal.summary) {
+        html += `<div class="pdf-section"><div class="pdf-section-title">${dict.summary}</div>
+                 <div class="pdf-desc">${parseBiDiText(d.personal.summary)}</div></div>`;
+    }
+
+    if (d.experiences?.length) {
+        html += `<div class="pdf-section"><div class="pdf-section-title">${dict.experience}</div>`;
+        d.experiences.forEach(e => {
+            html += `<div class="pdf-item">
+                <div class="pdf-item-header"><span dir="auto">${e.title}</span><span dir="auto">${e.start} - ${e.end || dict.present}</span></div>
+                <div class="pdf-item-sub"><span dir="auto">${e.company}</span><span></span></div>
+                <div class="pdf-desc">${parseBiDiList(e.desc)}</div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    if (d.education?.length) {
+        html += `<div class="pdf-section"><div class="pdf-section-title">${dict.education}</div>`;
+        d.education.forEach(e => {
+            html += `<div class="pdf-item">
+                <div class="pdf-item-header"><span dir="auto">${e.inst}</span><span dir="auto">${e.year}</span></div>
+                <div class="pdf-item-sub"><span dir="auto">${e.degree} - ${e.field}</span><span></span></div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    if (d.skills) {
+        html += `<div class="pdf-section"><div class="pdf-section-title">${dict.skills}</div><div class="pdf-skills-list" dir="auto">`;
+        html += d.skills.split(',').filter(x => x.trim()).map(s => s.trim()).join(' &bull; ');
+        html += `</div></div>`;
+    }
+
+    if (d.courses && d.courses.length) {
+        html += `<div class="pdf-section"><div class="pdf-section-title">${dict.courses}</div>`;
+        d.courses.forEach(c => {
+            html += `<div class="pdf-item">
+                <div class="pdf-item-title" dir="auto">${c.name}</div>
+                <div class="pdf-item-meta" dir="auto">${c.inst} • ${c.year}</div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    if (d.languages?.length) {
+        html += `<div class="pdf-section"><div class="pdf-section-title">${dict.languages}</div>`;
+        d.languages.forEach(l => {
+            html += `<div style="font-size: 11px; margin-bottom: 4px;" dir="auto"><strong>${l.name}</strong> - ${l.level}</div>`;
+        });
+        html += `</div>`;
+    }
+
+    if (!isPremium) {
+        html += `<div class="pdf-watermark">${dict.watermark}</div>`;
+    }
+    c.innerHTML = html;
+}
+
+async function generateAndSendPDF(isPremium) {
+    const statusBox = document.getElementById('export-status');
+    statusBox.style.display = "block";
+    statusBox.innerText = "يتم الآن تجهيز وتصدير ملف PDF... ⏳";
+
+    preparePDFPreview(isPremium);
+
+    const element = document.getElementById('pdf-container');
+    const opt = {
+        margin: 0,
+        filename: `${document.getElementById('fullName').value || 'CV'}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+        const worker = html2pdf().set(opt).from(element);
+        const pdfBlob = await worker.outputPdf('blob');
+
+        if (BOT_TOKEN !== "YOUR_BOT_TOKEN_HERE") {
+            document.getElementById('export-status').innerText = "يتم الإرسال... 🚀";
+            const chatId = tg.initDataUnsafe?.user?.id;
+            if (!chatId) throw new Error("لا يمكن الوصول لمعرف المحادثة. (التطبيق لا يعمل كبوت حالياً)");
+
+            const fd = new FormData();
+            fd.append("chat_id", chatId);
+            fd.append("document", pdfBlob, opt.filename);
+            fd.append("caption", "سيرتك الذاتية متوافقة مع الـ ATS جاهزة! 🌟\nتم الإنشاء بواسطة @ats3cv_bot");
+
+            // --- Supabase Tracking ---
+            try {
+                const sbUrl = "https://hcpehnoencklcpzzwdcp.supabase.co/rest/v1/cv_logs";
+                const sbKey = "sb_publishable_P87zrDGoh_QkPen5B9bytw_vPfg8Z7o";
+                fetch(sbUrl, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': sbKey,
+                        'Authorization': `Bearer ${sbKey}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({
+                        telegram_id: String(chatId),
+                        username: tg.initDataUnsafe?.user?.username || 'unknown',
+                        first_name: tg.initDataUnsafe?.user?.first_name || 'unknown',
+                        language: document.querySelector('input[name="language"]:checked')?.value || 'ar',
+                        cv_type: document.querySelector('input[name="cvType"]:checked')?.value || 'fresh'
+                    })
+                }).catch(e => console.log("Supabase error:", e));
+            } catch (e) { }
+            // --------------------------
+
+            const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd });
+            if (r.ok) tg.showAlert("تم الإرسال 🚀", () => tg.close());
+            else throw new Error("فشل الرفع من تليجرام");
+        } else {
+            document.getElementById('export-status').innerText = "جاري التحميل محلياً (وضع المطور) 💾";
+            await worker.save();
+            showToast("تم التحميل بنجاح!");
+        }
+    } catch (err) {
+        document.getElementById('export-status').innerText = "❌ خطأ: " + err.message;
+    }
+}
