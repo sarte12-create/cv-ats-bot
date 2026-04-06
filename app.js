@@ -6,6 +6,8 @@ window.onerror = function (msg, url, line) {
     }
 };
 
+alert('ملف الأكواد (APP V5) يعمل بشكل ممتاز! 🛠️ إذا رأيت هذه الرسالة فالأكواد تم تحميلها.');
+
 const _p1 = "AIzaSyDwq-";
 const _p2 = "aldfWx-Nk6u_";
 const _p3 = "hO6HPIfEG_yAE-tg8";
@@ -83,22 +85,22 @@ function nav(dir) {
         // Just checking execution initially silently or visually if needed
         // alert("تم النقر على التالي، جاري المعالجة.."); 
     }
-    
+
     if (dir === 1 && !validateStep(currentStep)) return;
     if (dir === 1 && currentStep === 11) syncReviewBack();
-    
+
     try {
         saveData();
     } catch (e) {
         alert("خطأ أثناء الحفظ: " + e.message);
         return;
     }
-    
+
     const currStepEl = document.getElementById(`step-${currentStep}`);
     if (currStepEl) currStepEl.classList.remove('active');
-    
+
     currentStep += dir;
-    
+
     const nextStepEl = document.getElementById(`step-${currentStep}`);
     if (nextStepEl) nextStepEl.classList.add('active');
 
