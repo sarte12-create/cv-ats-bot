@@ -1,12 +1,4 @@
-window.onerror = function (msg, url, line) {
-    if (typeof tg !== 'undefined' && tg.showAlert) {
-        tg.showAlert("حدث خطأ تقني: " + msg + " في سطر " + line);
-    } else {
-        alert("حدث خطأ تقني: " + msg + " في سطر " + line);
-    }
-};
-
-alert('ملف الأكواد (APP V5) يعمل بشكل ممتاز! 🛠️ إذا رأيت هذه الرسالة فالأكواد تم تحميلها.');
+// File loaded 
 
 const _p1 = "AIzaSyDwq-";
 const _p2 = "aldfWx-Nk6u_";
@@ -80,20 +72,14 @@ function validateStep(step) {
 }
 
 function nav(dir) {
-    alert("بداية كود الزر: " + currentStep);
-
-    if (dir === 1 && !validateStep(currentStep)) {
-        alert("فشل التحقق!");
-        return;
-    }
-
+    if (dir === 1 && !validateStep(currentStep)) return;
     if (dir === 1 && currentStep === 11) syncReviewBack();
 
     try {
         saveData();
-        alert("تم الحفظ بنجاح!");
     } catch (e) {
-        alert("خطأ أثناء الحفظ: " + e.message);
+        console.error("SaveData error", e);
+        showToast("حدث خطأ أثناء حفظ البيانات!");
         return;
     }
 
@@ -103,21 +89,20 @@ function nav(dir) {
     currentStep += dir;
 
     const nextStepEl = document.getElementById(`step-${currentStep}`);
-    if (nextStepEl) {
-        nextStepEl.classList.add('active');
-        alert("تم الانتقال بنجاح إلى: " + currentStep);
-    } else {
-        alert("خطأ: لم يتم العثور على الصفحة رقم " + currentStep);
-    }
+    if (nextStepEl) nextStepEl.classList.add('active');
 
-    document.getElementById('btn-prev').style.display = currentStep > 1 ? 'block' : 'none';
+    const btnPrev = document.getElementById('btn-prev');
     const btnNext = document.getElementById('btn-next');
 
+    if (btnPrev) btnPrev.style.display = currentStep > 1 ? 'block' : 'none';
+
     if (currentStep === totalSteps) {
-        btnNext.style.display = 'none';
+        if (btnNext) btnNext.style.display = 'none';
     } else {
-        btnNext.style.display = 'block';
-        btnNext.textContent = currentStep === 11 ? "اكتملت المراجعة (التالي) 🚀" : "التالي";
+        if (btnNext) {
+            btnNext.style.display = 'block';
+            btnNext.textContent = currentStep === 11 ? "اكتملت المراجعة (التالي) 🚀" : "التالي";
+        }
     }
 
     if (currentStep === 11 && dir === 1) buildReviewStep();
@@ -140,6 +125,12 @@ function addLanguage() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // ربط الأزرار برمجياً لتجنب مشاكل onclick في المتصفح
+    const btnNext = document.getElementById('btn-next');
+    const btnPrev = document.getElementById('btn-prev');
+    if (btnNext) btnNext.addEventListener('click', (e) => { e.preventDefault(); nav(1); });
+    if (btnPrev) btnPrev.addEventListener('click', (e) => { e.preventDefault(); nav(-1); });
+
     loadData();
     if (!document.getElementById('experiences-list').children.length) addExperience();
     if (!document.getElementById('education-list').children.length) addEducation();
