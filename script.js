@@ -9,7 +9,11 @@ const SUPABASE_URL = "https://hcpehnoencklcpzzwdcp.supabase.co";
 const SUPABASE_KEY = "sb_publishable_P87zrDGoh_QkPen5B9bytw_vPfg8Z7o";
 let supabase = null;
 if (typeof window.supabase !== 'undefined' && SUPABASE_URL !== "YOUR_SUPABASE_URL") {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    try {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    } catch (e) {
+        console.error("Supabase Init Error: ", e);
+    }
 }
 
 // Telegram Web App Initialization
@@ -156,9 +160,18 @@ function loadData() {
     if (!raw) return;
     try {
         const data = JSON.parse(raw);
-        if (data.lang) document.querySelector(`input[name="language"][value="${data.lang}"]`).checked = true;
-        if (data.cvType) document.querySelector(`input[name="cvType"][value="${data.cvType}"]`).checked = true;
-        if (data.cvTemplate) document.querySelector(`input[name="cvTemplate"][value="${data.cvTemplate}"]`).checked = true;
+        if (data.lang) {
+            const el = document.querySelector(`input[name="language"][value="${data.lang}"]`);
+            if (el) el.checked = true;
+        }
+        if (data.cvType) {
+            const el = document.querySelector(`input[name="cvType"][value="${data.cvType}"]`);
+            if (el) el.checked = true;
+        }
+        if (data.cvTemplate) {
+            const el = document.querySelector(`input[name="cvTemplate"][value="${data.cvTemplate}"]`);
+            if (el) el.checked = true;
+        }
         document.getElementById('fullName').value = data.personal?.fullName || '';
         document.getElementById('email').value = data.personal?.email || '';
         document.getElementById('phone').value = data.personal?.phone || '';
