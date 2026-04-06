@@ -189,14 +189,10 @@
             <!-- Step 12: Export -->
             <div class="step" id="step-12">
                 <h2>المعاينة والتصدير</h2>
-                <p>لقد صممت سيرتك الذاتية بنجاح! اختر طريقة التصدير التي تناسبك:</p>
+                <p>لقد صممت سيرتك الذاتية بنجاح! اضغط أدناه لتحميلها كملف PDF:</p>
                 <div class="export-options" style="display:flex; flex-direction:column; gap:15px; margin-top:20px;">
-                    <button type="button" class="btn btn-secondary" onclick="exportCV(false)">
-                        📄 تصدير مجاني (مدعوم بعلامة مائية)
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="exportCV(true)"
-                        style="background: linear-gradient(135deg, #FFD700, #F5A623); color: #000;">
-                        ⭐️ تصدير احترافي (بدون علامة مائية)
+                    <button type="button" class="btn btn-primary" onclick="generateAndSendPDF(false)">
+                        📥 تحميل السيرة الذاتية (مجاناً)
                     </button>
                 </div>
                 <div id="export-status" class="status-box" style="margin-top:15px; text-align:center; display:none;">
@@ -216,6 +212,8 @@
         <div id="pdf-container"></div>
     </div>
 
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
 </body>
 

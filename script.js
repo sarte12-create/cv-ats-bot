@@ -4,6 +4,14 @@ const _p3 = "hO6HPIfEG_yAE-tg8";
 const GEMINI_API_KEY = _p1 + _p2 + _p3;
 const BOT_TOKEN = "8570762354:AAFAykZXSK1fZFIELfB_ABVMljsMFcf3qI4";
 
+// إعدادات Supabase
+const SUPABASE_URL = "https://hcpehnoencklcpzzwdcp.supabase.co";
+const SUPABASE_KEY = "sb_publishable_P87zrDGoh_QkPen5B9bytw_vPfg8Z7o";
+let supabase = null;
+if (typeof window.supabase !== 'undefined' && SUPABASE_URL !== "YOUR_SUPABASE_URL") {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}
+
 // Telegram Web App Initialization
 const tg = window.Telegram.WebApp;
 tg.expand();
@@ -421,6 +429,22 @@ async function generateAndSendPDF(isPremium) {
     const statusBox = document.getElementById('export-status');
     statusBox.style.display = "block";
     statusBox.innerText = "يتم الآن تجهيز وتصدير ملف PDF... ⏳";
+
+    // تسجيل الإحصائيات في قاعدة البيانات (Supabase)
+    if (supabase) {
+        try {
+            const user = tg.initDataUnsafe?.user;
+            await supabase.from('bot_usage').insert([{
+                telegram_id: user?.id || null,
+                first_name: user?.first_name || 'Unknown',
+                username: user?.username || 'Unknown',
+                language_chosen: document.querySelector('input[name="language"]:checked')?.value || 'ar',
+                cv_type: document.querySelector('input[name="cvType"]:checked')?.value || 'fresh'
+            }]);
+        } catch (e) {
+            console.error("Supabase Error: ", e);
+        }
+    }
 
     preparePDFPreview(isPremium);
 
